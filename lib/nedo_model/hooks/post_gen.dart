@@ -7,15 +7,16 @@ Future<void> run(HookContext context) async {
       context.logger.progress('Generating clean architecture layers...');
 
   final nameProvider = _NameProvider(models);
+  final featureName = context.vars['feature_name'] as String;
 
   for (final model in models) {
     final modelMap = model as Map<String, dynamic>;
 
-    await _generateDataModel(modelMap, nameProvider);
+    await _generateDataModel(modelMap, nameProvider, featureName);
 
-    await _generateDomainEntity(modelMap, nameProvider);
+    await _generateDomainEntity(modelMap, nameProvider, featureName);
 
-    await _generateMapper(modelMap, nameProvider);
+    await _generateMapper(modelMap, nameProvider, featureName);
   }
 
   progress.complete(
@@ -63,38 +64,38 @@ class _NameProvider {
 }
 
 Future<void> _generateDataModel(
-    Map<String, dynamic> model, _NameProvider names) async {
+    Map<String, dynamic> model, _NameProvider names, String featureName) async {
   final originalName = model['name'] as String;
   final className = names.getModelName(originalName);
   final fileName = className.snakeCase;
   final content = _generateModelContent(model, className, names);
 
-  final file = File('data/models/$fileName.dart');
+  final file = File('lib/features/$featureName/data/models/$fileName.dart');
   await file.create(recursive: true);
   await file.writeAsString(content);
 }
 
 Future<void> _generateDomainEntity(
-    Map<String, dynamic> model, _NameProvider names) async {
+    Map<String, dynamic> model, _NameProvider names, String featureName) async {
   final originalName = model['name'] as String;
   final className = names.getEntityName(originalName);
   final fileName = className.snakeCase;
   final content = _generateEntityContent(model, className, names);
 
-  final file = File('domain/entities/$fileName.dart');
+  final file = File('lib/features/$featureName/domain/entities/$fileName.dart');
   await file.create(recursive: true);
   await file.writeAsString(content);
 }
 
 Future<void> _generateMapper(
-    Map<String, dynamic> model, _NameProvider names) async {
+    Map<String, dynamic> model, _NameProvider names, String featureName) async {
   final originalName = model['name'] as String;
   final modelName = names.getModelName(originalName);
   final entityName = names.getEntityName(originalName);
   final fileName = '${modelName.snakeCase}_mapper';
   final content = _generateMapperContent(model, modelName, entityName, names);
 
-  final file = File('data/mappers/$fileName.dart');
+  final file = File('lib/features/$featureName/data/mappers/$fileName.dart');
   await file.create(recursive: true);
   await file.writeAsString(content);
 }

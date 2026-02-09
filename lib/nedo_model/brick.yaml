@@ -26,6 +26,10 @@ environment:
 #  * a list of values (enums only)
 #  * an optional separator (list only)
 vars:
+  feature_name:
+    type: string
+    description: Name of the feature
+    prompt: Enter the feature name?
   schema_url:
     type: string
     description: Link to swagger.json (e.g https://api.com/swagger.json)

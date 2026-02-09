@@ -29,4 +29,4 @@ vars:
   name:
     type: string
     description: The name of the feature (e.g. Item, User, Product).
-    prompt: What is the entity name?
+    prompt: What is the feature name?
