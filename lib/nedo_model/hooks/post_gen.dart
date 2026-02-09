@@ -1,3 +1,4 @@
+// post_gen.dart
 import 'dart:io';
 import 'package:mason/mason.dart';
 
@@ -16,10 +17,13 @@ Future<void> run(HookContext context) async {
     await _generateDomainEntity(modelMap, nameProvider);
 
     await _generateMapper(modelMap, nameProvider);
+
+    // GENERATOR BARU: Validation Schema
+    await _generateValidator(modelMap, nameProvider);
   }
 
   progress.complete(
-      'Generated ${models.length} components (Model, Entity, Mapper).');
+      'Generated ${models.length} components (Model, Entity, Mapper, Validator).');
 }
 
 class _NameProvider {
@@ -62,6 +66,9 @@ class _NameProvider {
   }
 }
 
+// ... (Functions _generateDataModel, _generateDomainEntity, _generateMapper tetap sama, tidak perlu diubah) ...
+// Saya sertakan ulang wrapper function-nya agar copy-paste mudah, tapi logic intinya sama.
+
 Future<void> _generateDataModel(
     Map<String, dynamic> model, _NameProvider names) async {
   final originalName = model['name'] as String;
@@ -99,8 +106,216 @@ Future<void> _generateMapper(
   await file.writeAsString(content);
 }
 
+// ------------------------------------------------------------------
+// NEW: VALIDATOR GENERATOR
+// ------------------------------------------------------------------
+
+Future<void> _generateValidator(
+    Map<String, dynamic> model, _NameProvider names) async {
+  final originalName = model['name'] as String;
+  final entityName = names.getEntityName(originalName);
+  // Naming convention: UserEntity -> UserSchemaValidator
+  final validatorName = '${entityName.replaceAll('Entity', '')}SchemaValidator';
+  final fileName = validatorName.snakeCase;
+
+  final content =
+      _generateValidatorContent(model, validatorName, entityName, names);
+
+  // Menyimpan di folder domain/validators/
+  final file = File('domain/validators/$fileName.dart');
+  await file.create(recursive: true);
+  await file.writeAsString(content);
+}
+
+String _generateValidatorContent(Map<String, dynamic> model,
+    String validatorName, String entityName, _NameProvider names) {
+  final fields = model['fields'] as List;
+  final buffer = StringBuffer();
+
+  // 1. Imports
+  buffer.writeln("import '../../core/abstraction/base_validator.dart';");
+  buffer.writeln("import '../entities/${entityName.snakeCase}.dart';");
+
+  // Import nested validators
+  final customFields = fields.where((f) => f['isCustom'] == true).toList();
+  for (final field in customFields) {
+    final originalInner = field['innerType'] as String;
+    final innerEntityName = names.getEntityName(originalInner);
+    final innerValidatorName =
+        '${innerEntityName.replaceAll('Entity', '')}SchemaValidator';
+    buffer.writeln("import '${innerValidatorName.snakeCase}.dart';");
+  }
+  buffer.writeln();
+
+  // 2. Class Declaration
+  buffer.writeln('class $validatorName extends BaseValidator<$entityName> {');
+  buffer.writeln('  @override');
+  buffer.writeln('  Map<String, String> validate($entityName data) {');
+  buffer.writeln('    final errors = <String, String>{};');
+  buffer.writeln();
+
+  // 3. Validation Logic
+  for (final f in fields) {
+    final fname = f['name'];
+    final originalName = f['originalName'] as String;
+    final lowerName = originalName.toLowerCase(); // Untuk deteksi heuristic
+    final isReq = f['isRequired'] as bool;
+    final isList = f['isList'] as bool;
+    final isCustom = f['isCustom'] as bool;
+    final type = f['type'] as String;
+
+    // --- CASE A: CUSTOM OBJECTS (Nested Validation) ---
+    // (Logic ini tetap sama seperti sebelumnya karena sudah benar)
+    if (isCustom) {
+      final originalInner = f['innerType'] as String;
+      final innerEntityName = names.getEntityName(originalInner);
+      final innerValidator =
+          '${innerEntityName.replaceAll('Entity', '')}SchemaValidator';
+
+      if (isList) {
+        buffer.writeln('    // Validate List of $innerEntityName');
+        if (!isReq) buffer.writeln('    if (data.$fname != null) {');
+
+        buffer.writeln(
+            '    for (var i = 0; i < (data.$fname${isReq ? '' : '?'} ?? []).length; i++) {');
+        buffer.writeln('      final item = data.$fname${isReq ? '' : '!'}[i];');
+        buffer.writeln(
+            '      final itemErrors = $innerValidator().validate(item);');
+        buffer.writeln('      itemErrors.forEach((key, value) {');
+        buffer.writeln("        errors['$originalName.\$i.\$key'] = value;");
+        buffer.writeln('      });');
+        buffer.writeln('    }');
+
+        if (!isReq) buffer.writeln('    }');
+      } else {
+        buffer.writeln('    // Validate Nested $innerEntityName');
+        if (!isReq) buffer.writeln('    if (data.$fname != null) {');
+
+        buffer.writeln(
+            '      final ${fname}Errors = $innerValidator().validate(data.$fname${isReq ? '' : '!'});');
+        buffer.writeln('      ${fname}Errors.forEach((key, value) {');
+        buffer.writeln("        errors['$originalName.\$key'] = value;");
+        buffer.writeln('      });');
+
+        if (!isReq) buffer.writeln('    }');
+      }
+      buffer.writeln();
+      continue;
+    }
+
+    // --- CASE B: STRING VALIDATION HEURISTICS ---
+    if (type.contains('String')) {
+      final valueAccess = isReq ? "data.$fname" : "data.$fname!";
+      final nullCheck = isReq ? "" : "data.$fname != null && ";
+
+      // 1. Cek Wajib Diisi (Empty Check)
+      if (isReq) {
+        buffer.writeln("    if ($valueAccess.trim().isEmpty) {");
+        buffer.writeln(
+            "      errors['$originalName'] = 'Field ini wajib diisi';");
+        buffer.writeln("    }");
+      } else {
+        // Jika optional tapi diisi string kosong, anggap error (tergantung rule enterprise, biasanya ya)
+        buffer.writeln("    if ($nullCheck$valueAccess.trim().isEmpty) {");
+        buffer.writeln(
+            "      errors['$originalName'] = 'Field tidak boleh kosong jika diisi';");
+        buffer.writeln("    }");
+      }
+
+      // Pembuka blok validasi lanjutan (hanya jalan jika tidak empty)
+      buffer.writeln("    else if ($nullCheck$valueAccess.isNotEmpty) {");
+
+      // 2. EMAIL CHECK
+      if (lowerName.contains('email')) {
+        buffer.writeln(
+            r"      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');");
+        buffer.writeln("      if (!emailRegex.hasMatch($valueAccess)) {");
+        buffer.writeln(
+            "        errors['$originalName'] = 'Format email tidak valid';");
+        buffer.writeln("      }");
+      }
+
+      // 3. PASSWORD CHECK
+      else if (lowerName.contains('password') || lowerName.contains('pass')) {
+        buffer.writeln("      if ($valueAccess.length < 8) {");
+        buffer.writeln(
+            "        errors['$originalName'] = 'Password minimal 8 karakter';");
+        buffer.writeln("      }");
+        // Bisa ditambah regex harus ada angka/huruf besar
+      }
+
+      // 4. PHONE/MOBILE CHECK
+      else if (lowerName.contains('phone') ||
+          lowerName.contains('mobile') ||
+          lowerName.contains('tel') ||
+          lowerName.contains('wa')) {
+        buffer
+            .writeln(r"      final phoneRegex = RegExp(r'^\+?[\d\s-]{10,}$');");
+        buffer.writeln("      if (!phoneRegex.hasMatch($valueAccess)) {");
+        buffer.writeln(
+            "        errors['$originalName'] = 'Nomor telepon tidak valid';");
+        buffer.writeln("      }");
+      }
+
+      // 5. URL/LINK CHECK
+      else if (lowerName.contains('url') ||
+          lowerName.contains('link') ||
+          lowerName.contains('image') ||
+          lowerName.contains('photo') ||
+          lowerName.contains('avatar')) {
+        buffer.writeln(
+            "      if (!Uri.tryParse($valueAccess)!.hasAbsolutePath) {"); // Simple check
+        buffer.writeln(
+            "        errors['$originalName'] = 'Format URL tidak valid';");
+        buffer.writeln("      }");
+      }
+
+      buffer.writeln("    }"); // Penutup blok else if
+    }
+
+    // --- CASE C: NUMERIC VALIDATION HEURISTICS ---
+    if (type == 'int' || type == 'double' || type == 'num') {
+      final valueAccess = isReq ? "data.$fname" : "data.$fname!";
+      final nullCheck = isReq ? "" : "if (data.$fname != null) ";
+
+      // Validasi angka negatif untuk harga/stok/jumlah
+      if (lowerName.contains('price') ||
+          lowerName.contains('amount') ||
+          lowerName.contains('stock') ||
+          lowerName.contains('qty') ||
+          lowerName.contains('quantity')) {
+        buffer.write("    $nullCheck");
+        buffer.writeln("{");
+        buffer.writeln("      if ($valueAccess < 0) {");
+        buffer.writeln(
+            "        errors['$originalName'] = 'Nilai tidak boleh negatif';");
+        buffer.writeln("      }");
+        buffer.writeln("    }");
+      }
+    }
+
+    // --- CASE D: LIST CHECK ---
+    if (isList) {
+      if (isReq) {
+        buffer.writeln("    if (data.$fname.isEmpty) {");
+        buffer.writeln(
+            "      errors['$originalName'] = 'List tidak boleh kosong';");
+        buffer.writeln("    }");
+      }
+    }
+  }
+
+  buffer.writeln();
+  buffer.writeln('    return errors;');
+  buffer.writeln('  }');
+  buffer.writeln('}');
+
+  return buffer.toString();
+}
+
 String _generateModelContent(
     Map<String, dynamic> model, String className, _NameProvider names) {
+  // ... (Gunakan kode dari pertanyaan awalmu) ...
   final fields = model['fields'] as List;
   final buffer = StringBuffer();
 
@@ -253,6 +468,7 @@ String _generateModelContent(
 
 String _generateEntityContent(
     Map<String, dynamic> model, String className, _NameProvider names) {
+  // ... (Gunakan kode dari pertanyaan awalmu) ...
   final fields = model['fields'] as List;
   final buffer = StringBuffer();
 
@@ -338,6 +554,7 @@ String _generateEntityContent(
 
 String _generateMapperContent(Map<String, dynamic> model, String modelName,
     String entityName, _NameProvider names) {
+  // ... (Gunakan kode dari pertanyaan awalmu) ...
   final fields = model['fields'] as List;
   final buffer = StringBuffer();
 
