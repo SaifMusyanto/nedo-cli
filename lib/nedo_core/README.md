@@ -34,6 +34,7 @@ dependencies:
   dio: ^5.0.0
   flutter_secure_storage: ^8.0.0
   sqflite: ^2.4.2
+  google_fonts: ^8.0.0
 
 # Required for code generation
 flutter:

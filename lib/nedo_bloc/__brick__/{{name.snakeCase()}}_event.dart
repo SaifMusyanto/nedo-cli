@@ -2,7 +2,6 @@
 import 'package:equatable/equatable.dart';
 {{/use_equatable}}
 
-part of '{{name.snakeCase()}}_bloc.dart';
 
 sealed class {{name.pascalCase()}}Event {{#use_equatable}}extends Equatable{{/use_equatable}} {
   const {{name.pascalCase()}}Event();
@@ -20,7 +19,7 @@ final class {{name.pascalCase()}}Fetched extends {{name.pascalCase()}}Event {
 
 /// Event untuk menambah data (Create)
 final class {{name.pascalCase()}}Created extends {{name.pascalCase()}}Event {
-  final {{data_type}} item;
+  final {{{data_type}}} item;
   const {{name.pascalCase()}}Created(this.item);
 
   {{#use_equatable}}
@@ -31,7 +30,7 @@ final class {{name.pascalCase()}}Created extends {{name.pascalCase()}}Event {
 
 /// Event untuk mengubah data (Update)
 final class {{name.pascalCase()}}Updated extends {{name.pascalCase()}}Event {
-  final {{data_type}} item;
+  final {{{data_type}}} item;
   const {{name.pascalCase()}}Updated(this.item);
 
   {{#use_equatable}}

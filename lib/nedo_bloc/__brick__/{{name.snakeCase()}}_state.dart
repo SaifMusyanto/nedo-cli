@@ -2,9 +2,7 @@
 import 'package:equatable/equatable.dart';
 {{/use_equatable}}
 
-part of '{{name.snakeCase()}}_bloc.dart';
-
-sealed class {{name.pascalCase()}}State {{#use_equatable}}extends Equatable{{/use_equatable}} {
+abstract class {{name.pascalCase()}}State {{#use_equatable}}extends Equatable{{/use_equatable}} {
   const {{name.pascalCase()}}State();
   
   {{#use_equatable}}

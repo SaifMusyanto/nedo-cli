@@ -1,7 +1,7 @@
 name: nedo_bloc
 description: Generate BLoC pattern boilerplate with basic states (Initial, Loading, Loaded, Error) and fetch event
 version: 1.0.0
-repository: https://github.com/SaifMusyanto/nedo_cli
+repository: https://github.com/SaifMusyanto/nedo-cli
 
 vars:
   # Hanya menanyakan informasi inti
@@ -17,38 +17,8 @@ vars:
     prompt: What is the data type?
     default: dynamic
 
-  datasource_name:
-    type: string
-    description: Datasource class name
-    prompt: Datasource class name?
-    default: ApiDatasource
-
-  use_repository:
-    type: boolean
-    description: Generate repository layer
-    prompt: Generate repository layer?
-    default: true
-
   use_equatable:
     type: boolean
     description: Use Equatable
     prompt: Use Equatable?
     default: true
-
-  # Method names otomatis (Hidden/Default tanpa prompt jika memungkinkan,
-  # namun di Mason kita set default-nya agar langsung enter tanpa ketik)
-  fetch_method:
-    type: string
-    default: "get{{name.pascalCase()}}s"
-
-  create_method:
-    type: string
-    default: "create{{name.pascalCase()}}"
-
-  update_method:
-    type: string
-    default: "update{{name.pascalCase()}}"
-
-  delete_method:
-    type: string
-    default: "delete{{name.pascalCase()}}"
