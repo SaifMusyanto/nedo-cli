@@ -1,5 +1,6 @@
 import 'package:mason/mason.dart';
 import '../../nedo_model/hooks/pre_gen.dart' as model_pre_gen;
+import '../../nedo_bloc_generic/hooks/pre_gen.dart' as bloc_pre_gen;
 
 Future<void> run(HookContext context) async {
   if (!context.vars.containsKey('name')) {
@@ -116,5 +117,14 @@ Future<void> run(HookContext context) async {
   }
 
   context.vars['methods'] = methods;
+
+  try {
+    context.logger.info('\n--- Presentation Layer Config ---');
+    await bloc_pre_gen.run(context);
+  } catch (e) {
+    context.logger.err('Error running nedo_bloc_generic pre_gen: $e');
+    return;
+  }
+
   context.logger.success('Configuration complete! Generating feature...');
 }

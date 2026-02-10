@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:mason/mason.dart';
 import '../../nedo_model/hooks/post_gen.dart' as model_post_gen;
+import '../../nedo_bloc_generic/hooks/post_gen.dart' as bloc_post_gen;
 
 Future<void> run(HookContext context) async {
   final featureName = context.vars['name'] as String;
@@ -34,8 +35,16 @@ Future<void> run(HookContext context) async {
       methods,
       nameProvider,
     );
+    await _generateBloc(context);
 
     featureProgress.complete('Feature $featureName generated successfully!');
+
+    // Format code
+    try {
+      await Process.run('dart', ['format', '.']);
+    } catch (e) {
+      context.logger.warn('Could not run dart format: $e');
+    }
   } catch (e, stackTrace) {
     featureProgress.fail('Error generating feature: $e');
     context.logger.err(stackTrace.toString());
@@ -423,13 +432,7 @@ Future<void> _generateRemoteProviderImplementation(
       content.writeln('    final data = params.toMap();');
     }
 
-    if (ret == 'void') {
-      content.writeln(
-        '    // await dioClient.post(EndpointConstant.$methodName, ...);',
-      );
-    } else {
-      content.writeln('    throw UnimplementedError();');
-    }
+    content.writeln('    throw UnimplementedError();');
 
     content.writeln('  }');
     content.writeln();
@@ -511,6 +514,83 @@ Future<void> _generateUseCases(
     await file.create(recursive: true);
     await file.writeAsString(content.toString());
   }
+}
+
+Future<void> _generateBloc(HookContext context) async {
+  context.logger.info('Generating Presentation Layer...');
+
+  final featureName = context.vars['name'] as String;
+  final methods = context.vars['methods'] as List<dynamic>? ?? [];
+
+  context.vars['feature_name'] = featureName;
+  context.vars['is_bloc'] = context.vars['type'] == 'bloc';
+  context.vars['is_cubit'] = context.vars['type'] != 'bloc';
+
+  // Generate handlers for bloc/cubit from methods
+  // Note: nedo_bloc_generic expects 'handlers'.
+  // We must construct 'handlers' from 'methods' similar to how nedo_bloc_generic's pre_gen does it.
+  // However, nedo_bloc_generic's pre_gen does interactive prompting for handlers!
+  // Here we have 'methods'. We should map 'methods' to 'handlers'.
+
+  final handlers = <Map<String, dynamic>>[];
+  final imports = <String>{};
+
+  for (final method in methods) {
+    final rawName = method['name'] as String;
+    final returnType = method['returnType'] as String;
+    final paramType = method['paramType'] as String;
+    final pascalName = rawName.pascalCase;
+    final camelName = rawName.camelCase;
+
+    // Map types to imports if necessary (similar logic to nedo_bloc_generic pre_gen)
+    // But here we know where they come from (our generation).
+
+    // Re-construct imports logic briefly or assume standard locations?
+    // Let's rely on standard locations.
+
+    imports.add(
+        "import '../../domain/usecases/${rawName.snakeCase}_usecase.dart';");
+
+    // Check params/return for Entity import
+    if (paramType != 'none (void)' &&
+        !['String', 'int', 'bool'].contains(paramType)) {
+      final innerParam = _getInnerType(paramType);
+      if (innerParam.endsWith('Entity')) {
+        imports.add(
+            "import '../../domain/entities/${innerParam.snakeCase}.dart';");
+      }
+    }
+    if (returnType != 'void' &&
+        !['String', 'int', 'bool'].contains(returnType)) {
+      final innerReturn = _getInnerType(returnType);
+      if (innerReturn.endsWith('Entity')) {
+        imports.add(
+            "import '../../domain/entities/${innerReturn.snakeCase}.dart';");
+      }
+    }
+
+    handlers.add({
+      'name': rawName,
+      'pascalName': pascalName,
+      'eventName': '${pascalName}Requested',
+      'stateSuccess': '${pascalName}Success',
+      'stateFailure': '${pascalName}Failure',
+      'useCaseName': '${pascalName}UseCase',
+      'useCaseVar': '_${camelName}UseCase',
+      'hasParams': paramType != 'none (void)',
+      'paramType': paramType,
+      'isVoidReturn': returnType == 'void',
+      'returnType': returnType,
+      // Transformer? Default null.
+      'statePattern': 'standard', // Defaulting to standard for auto-generated
+    });
+  }
+
+  context.vars['handlers'] = handlers;
+  // Merge existing imports?
+  context.vars['imports'] = imports.toList();
+
+  await bloc_post_gen.run(context);
 }
 
 class _NameProvider {

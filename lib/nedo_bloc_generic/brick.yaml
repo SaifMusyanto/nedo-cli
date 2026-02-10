@@ -1,4 +1,4 @@
-name: nedo_feature
+name: nedo_bloc_generic
 description: Generates a complete vertical slice (Repository, Provider, Impl, UseCases) with fpdart & strict wiring.
 
 # The following defines the brick repository url.
@@ -25,9 +25,24 @@ environment:
 #  * an optional prompt phrase used when asking for the variable
 #  * a list of values (enums only)
 #  * an optional separator (list only)
-
 vars:
   name:
     type: string
     description: The name of the feature (e.g. Item, User, Product).
     prompt: What is the feature name?
+  state_style:
+    type: enum
+    description: The style of state management to use.
+    default: multi
+    values:
+      - multi
+      - single
+    prompt: Select state style (multi=Loading/Success/Failure, single=One class with props)
+  state_props:
+    type: list
+    description: Properties for the single state class.
+    default: []
+  main_data_type:
+    type: string
+    description: The main data type for the standard Success state (optional).
+    default: ''
