@@ -277,9 +277,10 @@ class Validators {
   }
 
   /// Email validator for Flutter forms
-  static String? emailValidator(String? value) {
+  static String? emailValidator(String? value, {bool required = true}) {
     if (value == null || value.isEmpty) {
-      return 'Email is required';
+      if (required) return 'Email is required';
+      return null;
     }
     if (!isValidEmail(value)) {
       return 'Please enter a valid email';
@@ -288,9 +289,10 @@ class Validators {
   }
 
   /// Phone validator for Flutter forms
-  static String? phoneValidator(String? value) {
+  static String? phoneValidator(String? value, {bool required = true}) {
     if (value == null || value.isEmpty) {
-      return 'Phone number is required';
+      if (required) return 'Phone number is required';
+      return null;
     }
     if (!isValidPhone(value)) {
       return 'Please enter a valid phone number';
@@ -299,11 +301,19 @@ class Validators {
   }
 
   /// Password validator for Flutter forms
-  static String? passwordValidator(String? value) {
+  static String? passwordValidator(
+    String? value, {
+    bool required = true,
+    bool requireSpecialChar = true,
+  }) {
     if (value == null || value.isEmpty) {
-      return 'Password is required';
+      if (required) return 'Password is required';
+      return null;
     }
-    if (!isValidPassword(value)) {
+    if (!isValidPassword(value, requireSpecialChar: requireSpecialChar)) {
+      if (!requireSpecialChar) {
+        return 'Password must be at least 8 characters with uppercase, lowercase, and number';
+      }
       return 'Password must be at least 8 characters with uppercase, lowercase, number and special character';
     }
     return null;
