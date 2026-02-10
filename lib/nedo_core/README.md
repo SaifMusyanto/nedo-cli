@@ -34,6 +34,18 @@ dependencies:
   dio: ^5.0.0
   flutter_secure_storage: ^8.0.0
   sqflite: ^2.4.2
+  google_fonts: ^8.0.0
+  image_picker: ^1.0.7
+  permission_handler: ^11.3.0
+  connectivity_plus: ^5.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
 
 # Required for code generation
 flutter:

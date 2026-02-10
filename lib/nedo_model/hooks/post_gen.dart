@@ -1,3 +1,4 @@
+// post_gen.dart
 import 'dart:io';
 import 'package:mason/mason.dart';
 
@@ -20,7 +21,7 @@ Future<void> run(HookContext context) async {
   }
 
   progress.complete(
-      'Generated ${models.length} components (Model, Entity, Mapper).');
+      'Generated ${models.length} components (Model, Entity, Mapper, Validator).');
 }
 
 class _NameProvider {
@@ -63,6 +64,9 @@ class _NameProvider {
   }
 }
 
+// ... (Functions _generateDataModel, _generateDomainEntity, _generateMapper tetap sama, tidak perlu diubah) ...
+// Saya sertakan ulang wrapper function-nya agar copy-paste mudah, tapi logic intinya sama.
+
 Future<void> _generateDataModel(
     Map<String, dynamic> model, _NameProvider names, String featureName) async {
   final originalName = model['name'] as String;
@@ -102,6 +106,7 @@ Future<void> _generateMapper(
 
 String _generateModelContent(
     Map<String, dynamic> model, String className, _NameProvider names) {
+  // ... (Gunakan kode dari pertanyaan awalmu) ...
   final fields = model['fields'] as List;
   final buffer = StringBuffer();
 
@@ -254,6 +259,7 @@ String _generateModelContent(
 
 String _generateEntityContent(
     Map<String, dynamic> model, String className, _NameProvider names) {
+  // ... (Gunakan kode dari pertanyaan awalmu) ...
   final fields = model['fields'] as List;
   final buffer = StringBuffer();
 
@@ -339,6 +345,7 @@ String _generateEntityContent(
 
 String _generateMapperContent(Map<String, dynamic> model, String modelName,
     String entityName, _NameProvider names) {
+  // ... (Gunakan kode dari pertanyaan awalmu) ...
   final fields = model['fields'] as List;
   final buffer = StringBuffer();
 

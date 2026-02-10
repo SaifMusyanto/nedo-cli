@@ -1,10 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-part '{{name.snakeCase()}}_event.dart';
-part '{{name.snakeCase()}}_state.dart';
+import '{{name.snakeCase()}}_event.dart';
+import '{{name.snakeCase()}}_state.dart';
 
 class {{name.pascalCase()}}Bloc extends Bloc<{{name.pascalCase()}}Event, {{name.pascalCase()}}State> {
-  final {{{datasource_name}}} datasource;
+  final {{name.pascalCase()}}Datasource datasource;
 
   {{name.pascalCase()}}Bloc({
     required this.datasource,
@@ -22,7 +22,8 @@ class {{name.pascalCase()}}Bloc extends Bloc<{{name.pascalCase()}}Event, {{name.
   ) async {
     emit(const {{name.pascalCase()}}Loading());
     try {
-      final data = await datasource.{{{fetch_method}}}();
+      // Implement your fetch method here
+      // final data = await datasource.{{{fetch_method}}}();
       if ((data is List && data.isEmpty)) {
         emit(const {{name.pascalCase()}}Empty());
       } else {
@@ -39,7 +40,8 @@ class {{name.pascalCase()}}Bloc extends Bloc<{{name.pascalCase()}}Event, {{name.
   ) async {
     emit(const {{name.pascalCase()}}Submitting());
     try {
-      await datasource.{{{create_method}}}(event.item);
+      // Implement your create method here
+      // await datasource.{{{create_method}}}(event.item);
       emit(const {{name.pascalCase()}}Success('Created successfully'));
       // Optional: Refresh data after success
       add(const {{name.pascalCase()}}Fetched());
@@ -54,7 +56,8 @@ class {{name.pascalCase()}}Bloc extends Bloc<{{name.pascalCase()}}Event, {{name.
   ) async {
     emit(const {{name.pascalCase()}}Submitting());
     try {
-      await datasource.{{{update_method}}}(event.item);
+      // Implement your update method here
+      // await datasource.{{{update_method}}}(event.item);
       emit(const {{name.pascalCase()}}Success('Updated successfully'));
       add(const {{name.pascalCase()}}Fetched());
     } catch (e) {
@@ -68,7 +71,8 @@ class {{name.pascalCase()}}Bloc extends Bloc<{{name.pascalCase()}}Event, {{name.
   ) async {
     emit(const {{name.pascalCase()}}Submitting());
     try {
-      await datasource.{{{delete_method}}}(event.id);
+      // Implement your delete method here
+      // await datasource.{{{delete_method}}}(event.id);
       emit(const {{name.pascalCase()}}Success('Deleted successfully'));
       add(const {{name.pascalCase()}}Fetched());
     } catch (e) {
