@@ -134,6 +134,7 @@ String _generateValidatorContent(Map<String, dynamic> model,
 
   // 1. Imports
   buffer.writeln("import '../../core/abstraction/base_validator.dart';");
+  buffer.writeln("import '../../core/utils/validators.dart';");
   buffer.writeln("import '../entities/${entityName.snakeCase}.dart';");
 
   // Import nested validators
@@ -227,9 +228,7 @@ String _generateValidatorContent(Map<String, dynamic> model,
 
       // 2. EMAIL CHECK
       if (lowerName.contains('email')) {
-        buffer.writeln(
-            r"      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');");
-        buffer.writeln("      if (!emailRegex.hasMatch($valueAccess)) {");
+        buffer.writeln("      if (!Validators.isValidEmail($valueAccess)) {");
         buffer.writeln(
             "        errors['$originalName'] = 'Format email tidak valid';");
         buffer.writeln("      }");
@@ -237,11 +236,11 @@ String _generateValidatorContent(Map<String, dynamic> model,
 
       // 3. PASSWORD CHECK
       else if (lowerName.contains('password') || lowerName.contains('pass')) {
-        buffer.writeln("      if ($valueAccess.length < 8) {");
+        buffer
+            .writeln("      if (!Validators.isValidPassword($valueAccess)) {");
         buffer.writeln(
-            "        errors['$originalName'] = 'Password minimal 8 karakter';");
+            "        errors['$originalName'] = 'Password harus mengandung huruf besar, kecil, angka, spesial karakter dan min 8 karakter';");
         buffer.writeln("      }");
-        // Bisa ditambah regex harus ada angka/huruf besar
       }
 
       // 4. PHONE/MOBILE CHECK
@@ -249,9 +248,7 @@ String _generateValidatorContent(Map<String, dynamic> model,
           lowerName.contains('mobile') ||
           lowerName.contains('tel') ||
           lowerName.contains('wa')) {
-        buffer
-            .writeln(r"      final phoneRegex = RegExp(r'^\+?[\d\s-]{10,}$');");
-        buffer.writeln("      if (!phoneRegex.hasMatch($valueAccess)) {");
+        buffer.writeln("      if (!Validators.isValidPhone($valueAccess)) {");
         buffer.writeln(
             "        errors['$originalName'] = 'Nomor telepon tidak valid';");
         buffer.writeln("      }");
@@ -263,8 +260,7 @@ String _generateValidatorContent(Map<String, dynamic> model,
           lowerName.contains('image') ||
           lowerName.contains('photo') ||
           lowerName.contains('avatar')) {
-        buffer.writeln(
-            "      if (!Uri.tryParse($valueAccess)!.hasAbsolutePath) {"); // Simple check
+        buffer.writeln("      if (!Validators.isValidUrl($valueAccess)) {");
         buffer.writeln(
             "        errors['$originalName'] = 'Format URL tidak valid';");
         buffer.writeln("      }");
