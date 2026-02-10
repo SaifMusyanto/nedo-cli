@@ -15,30 +15,9 @@ Future<void> run(HookContext context) async {
       defaultValue: 'bloc',
     );
   }
-  final isBloc = context.vars['type'] == 'bloc';
+  final isBloc = (context.vars['type'] as String).toLowerCase() == 'bloc';
 
-  // --- State Style Selection ---
-  if (!context.vars.containsKey('state_style')) {
-    context.vars['state_style'] = context.logger.chooseOne(
-      'Select state style:',
-      choices: ['multi', 'single'],
-      defaultValue: 'multi',
-      display: (option) {
-        switch (option) {
-          case 'multi':
-            return 'Multi (Loading, Success, Failure)';
-          case 'single':
-            return 'Single (One class with properties)';
-          default:
-            return option;
-        }
-      },
-    );
-  }
-  final stateStyle = context.vars['state_style'] as String;
-
-  // --- Single State Properties ---
-  if (stateStyle == 'single') {
+  if (!isBloc) {
     final props = <Map<String, dynamic>>[];
     context.logger.info('\n--- Define State Properties ---');
 
@@ -146,8 +125,7 @@ Future<void> run(HookContext context) async {
     imports.add(
         "import '../../domain/usecases/${rawName.snakeCase}_usecase.dart';");
 
-    if (paramType != 'none (void)' &&
-        !['String', 'int', 'bool'].contains(paramType)) {
+    if (paramType != 'void' && !['String', 'int', 'bool'].contains(paramType)) {
       final innerParam = _getInnerType(paramType);
       if (innerParam.endsWith('Params') || innerParam.endsWith('Entity')) {
         imports.add(
@@ -171,7 +149,7 @@ Future<void> run(HookContext context) async {
       'stateFailure': '${pascalName}Failure',
       'useCaseName': useCaseName,
       'useCaseVar': useCaseVar,
-      'hasParams': paramType != 'none (void)',
+      'hasParams': paramType != 'void',
       'paramType': paramType,
       'isVoidReturn': returnType == 'void',
       'returnType': returnType,

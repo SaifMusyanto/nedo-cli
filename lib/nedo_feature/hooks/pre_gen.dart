@@ -101,11 +101,11 @@ Future<void> run(HookContext context) async {
       defaultValue: 'void',
     );
 
-    final paramChoices = ['none (void)', 'String', 'int', ...entityOptions];
+    final paramChoices = ['void', 'String', 'int', ...entityOptions];
     final paramType = context.logger.chooseOne(
       'Parameter type (Params): (default void)',
       choices: paramChoices,
-      defaultValue: 'none (void)',
+      defaultValue: 'void',
     );
 
     methods.add({

@@ -43,13 +43,12 @@ Future<void> _generateStates(
       ? '${featureName.snakeCase}_bloc.dart'
       : '${featureName.snakeCase}_cubit.dart';
 
-  final stateStyle = context.vars['state_style'] as String;
   final stateProps = context.vars['state_props'] as List<dynamic>? ?? [];
 
   buffer.writeln("part of '$parentFile';");
   buffer.writeln();
 
-  if (stateStyle == 'single') {
+  if (!isBloc) {
     buffer.writeln("enum ScreenStatus { initial, loading, success, failure }");
     buffer.writeln();
 
@@ -337,7 +336,7 @@ Future<void> _generateBloc(
     String? importParams;
     if (hasParams) {
       final innerParam = _getInnerType(paramType);
-      if (innerParam != 'none (void)' &&
+      if (innerParam != 'void' &&
           !['String', 'int', 'bool', 'double'].contains(innerParam)) {
         importParams =
             "import '../../domain/entities/${innerParam.snakeCase}.dart';";
@@ -449,8 +448,6 @@ Future<void> _generateCubit(
   final pascalName = featureName.pascalCase;
   final snakeName = featureName.snakeCase;
   final fileName = '${snakeName}_cubit';
-  final stateStyle = context.vars['state_style'] as String? ?? 'multi';
-  final mainDataType = context.vars['main_data_type'] as String? ?? '';
 
   // Imports
   buffer.writeln("import 'package:flutter_bloc/flutter_bloc.dart';");
@@ -471,7 +468,7 @@ Future<void> _generateCubit(
     String? importParams;
     if (hasParams) {
       final innerParam = _getInnerType(paramType);
-      if (innerParam != 'none (void)' &&
+      if (innerParam != 'void' &&
           !['String', 'int', 'bool', 'double'].contains(innerParam)) {
         importParams =
             "import '../../domain/entities/${innerParam.snakeCase}.dart';";
@@ -508,23 +505,13 @@ Future<void> _generateCubit(
   for (final h in handlers) {
     buffer.write("this.${h['useCaseVar']}, ");
   }
-
-  // Initial State logic
-  if (stateStyle == 'single') {
-    buffer.writeln(") : super(const ${pascalName}State());");
-  } else {
-    buffer.writeln(") : super(${pascalName}Initial());");
-  }
-
+  buffer.writeln(") : super(const ${pascalName}State());");
   buffer.writeln();
 
   // Methods
   for (final h in handlers) {
     final methodName = h['name']; // camelCase
     final useCaseVar = h['useCaseVar'];
-    final statePattern = h['statePattern'];
-    final successState = h['stateSuccess'];
-    final failureState = h['stateFailure'];
     final paramType = h['paramType'];
     final hasParams = h['hasParams'] as bool;
     final isVoid = h['isVoidReturn'] as bool;
@@ -532,18 +519,7 @@ Future<void> _generateCubit(
     final methodParams = hasParams ? '$paramType params' : '';
 
     buffer.writeln("  Future<void> $methodName($methodParams) async {");
-
-    if (stateStyle == 'single') {
-      // --- Single State Emit Logic ---
-      // Assuming 'status' field exists if we want to set loading.
-      // We'll try to set status=loading if possible.
-      buffer.writeln("    emit(state.copyWith(status: ScreenStatus.loading));");
-    } else {
-      // --- Multi State Emit Logic ---
-      if (statePattern == 'standard') {
-        buffer.writeln("    emit(${h['pascalName']}Loading());");
-      }
-    }
+    buffer.writeln("    emit(state.copyWith(status: ScreenStatus.loading));");
 
     final callParams = hasParams ? 'params' : 'NoParams()';
     buffer.writeln("    final result = await $useCaseVar($callParams);");
@@ -551,66 +527,38 @@ Future<void> _generateCubit(
     buffer.writeln("    result.fold(");
     buffer.writeln("      (failure) {");
 
-    if (stateStyle == 'single') {
-      // Single State Failure
-      buffer.writeln(
-          "        emit(state.copyWith(status: ScreenStatus.failure, failure: failure));");
-    } else {
-      // Multi State Failure
-      if (statePattern != 'simple') {
-        buffer.writeln("        emit($failureState(failure));");
-      }
-    }
+    buffer.writeln(
+        "        emit(state.copyWith(status: ScreenStatus.failure, failure: failure));");
 
     buffer.writeln("      },");
     buffer.writeln("      (data) {");
 
-    if (stateStyle == 'single') {
-      // Single State Success
-      // emit(state.copyWith(status: ScreenStatus.success, someField: data));
-      // Logic: try to match 'data' type to a field in props?
-      // Or just status.
-      if (!isVoid) {
-        // Try to find a property with matching type
-        // Implementation constraint: This is hard without reflection on context.vars['state_props'].
-        // Let's iterate context.vars['state_props'] to find a match!
-        final props = context.vars['state_props'] as List<dynamic>;
-        // We need to match `returnType` (data's type) with a prop type.
-        // Note: returnType might be `List<UserEntity>` and prop might be `List<UserEntity>`.
-        // Simple string match.
-        var dataField = '';
-        for (final p in props) {
-          if (p['type'] == h['returnType']) {
-            dataField = p['name'];
-            break;
-          }
+    if (!isVoid) {
+      // Try to find a property with matching type
+      // Implementation constraint: This is hard without reflection on context.vars['state_props'].
+      // Let's iterate context.vars['state_props'] to find a match!
+      final props = context.vars['state_props'] as List<dynamic>;
+      // We need to match `returnType` (data's type) with a prop type.
+      // Note: returnType might be `List<UserEntity>` and prop might be `List<UserEntity>`.
+      // Simple string match.
+      var dataField = '';
+      for (final p in props) {
+        if (p['type'] == h['returnType']) {
+          dataField = p['name'];
+          break;
         }
+      }
 
-        if (dataField.isNotEmpty) {
-          buffer.writeln(
-              "        emit(state.copyWith(status: ScreenStatus.success, $dataField: data));");
-        } else {
-          buffer.writeln(
-              "        emit(state.copyWith(status: ScreenStatus.success)); // TODO: Assign data to field");
-        }
+      if (dataField.isNotEmpty) {
+        buffer.writeln(
+            "        emit(state.copyWith(status: ScreenStatus.success, $dataField: data));");
       } else {
         buffer.writeln(
-            "        emit(state.copyWith(status: ScreenStatus.success));");
+            "        emit(state.copyWith(status: ScreenStatus.success)); // TODO: Assign data to field");
       }
     } else {
-      // Multi State Success
-      if (mainDataType.isNotEmpty && (isVoid || h['returnType'] == 'void')) {
-        // Assuming data matches mainDataType logic?
-        // Actually, if it's void return, we can't pass 'data'.
-        // We can only pass data if the usecase returns it.
-        // So mainDataType here is decorative if usecase returns void.
-        // But if usecase returns `T`, and mainDataType is `T`.
-        buffer.writeln("        emit(const $successState());");
-      } else if (!isVoid) {
-        buffer.writeln("        emit($successState(data));");
-      } else {
-        buffer.writeln("        emit(const $successState());");
-      }
+      buffer.writeln(
+          "        emit(state.copyWith(status: ScreenStatus.success));");
     }
 
     buffer.writeln("      },");

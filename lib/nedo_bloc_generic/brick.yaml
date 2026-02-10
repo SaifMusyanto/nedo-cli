@@ -30,14 +30,6 @@ vars:
     type: string
     description: The name of the feature (e.g. Item, User, Product).
     prompt: What is the feature name?
-  state_style:
-    type: enum
-    description: The style of state management to use.
-    default: multi
-    values:
-      - multi
-      - single
-    prompt: Select state style (multi=Loading/Success/Failure, single=One class with props)
   state_props:
     type: list
     description: Properties for the single state class.

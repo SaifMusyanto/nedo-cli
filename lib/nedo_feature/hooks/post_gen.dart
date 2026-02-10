@@ -91,7 +91,7 @@ Future<void> _generateRepositoryInterface(
   for (final m in methods) {
     final param = m['paramType'] as String;
     final innerParam = _getInnerType(param);
-    if (innerParam != 'none (void)' &&
+    if (innerParam != 'void' &&
         !['String', 'int', 'bool', 'double'].contains(innerParam)) {
       usedParams.add(innerParam);
     }
@@ -124,7 +124,7 @@ Future<void> _generateRepositoryInterface(
     String ret = returnType == 'void' ? 'void' : returnType;
     String params = '';
 
-    if (paramType != 'none (void)') {
+    if (paramType != 'void') {
       params = '$paramType params';
     }
 
@@ -189,7 +189,7 @@ Future<void> _generateRepositoryImplementation(
     final param = m['paramType'] as String;
     final innerParam = _getInnerType(param);
 
-    if (innerParam != 'none (void)' &&
+    if (innerParam != 'void' &&
         !['String', 'int', 'bool', 'double'].contains(innerParam)) {
       usedParams.add(innerParam);
       if (innerParam.endsWith('Model')) {
@@ -224,7 +224,7 @@ Future<void> _generateRepositoryImplementation(
     String params = '';
     String callParams = '';
 
-    if (paramType != 'none (void)') {
+    if (paramType != 'void') {
       params = '$paramType params';
       callParams = 'params';
     }
@@ -325,7 +325,7 @@ Future<void> _generateRemoteProviderInterface(
     }
 
     String params = '';
-    if (paramType != 'none (void)') {
+    if (paramType != 'void') {
       params = '$paramType params';
     }
 
@@ -420,7 +420,7 @@ Future<void> _generateRemoteProviderImplementation(
     }
 
     String params = '';
-    if (paramType != 'none (void)') {
+    if (paramType != 'void') {
       params = '$paramType params';
     }
 
@@ -489,7 +489,7 @@ Future<void> _generateUseCases(
     content.writeln('@injectable');
 
     String ret = returnType == 'void' ? 'void' : returnType;
-    String param = paramType == 'none (void)' ? 'NoParams' : paramType;
+    String param = paramType == 'void' ? 'NoParams' : paramType;
 
     content.writeln('class $useCaseName implements UseCase<$ret, $param> {');
     content.writeln('  final ${featureName.pascalCase}Repository repository;');
@@ -500,7 +500,7 @@ Future<void> _generateUseCases(
     content.writeln(
       '  Future<Either<Failure, $ret>> call($param params) async {',
     );
-    if (paramType == 'none (void)') {
+    if (paramType == 'void') {
       content.writeln('    return repository.$methodName();');
     } else {
       content.writeln('    return repository.$methodName(params);');
@@ -552,8 +552,7 @@ Future<void> _generateBloc(HookContext context) async {
         "import '../../domain/usecases/${rawName.snakeCase}_usecase.dart';");
 
     // Check params/return for Entity import
-    if (paramType != 'none (void)' &&
-        !['String', 'int', 'bool'].contains(paramType)) {
+    if (paramType != 'void' && !['String', 'int', 'bool'].contains(paramType)) {
       final innerParam = _getInnerType(paramType);
       if (innerParam.endsWith('Entity')) {
         imports.add(
@@ -577,7 +576,7 @@ Future<void> _generateBloc(HookContext context) async {
       'stateFailure': '${pascalName}Failure',
       'useCaseName': '${pascalName}UseCase',
       'useCaseVar': '_${camelName}UseCase',
-      'hasParams': paramType != 'none (void)',
+      'hasParams': paramType != 'void',
       'paramType': paramType,
       'isVoidReturn': returnType == 'void',
       'returnType': returnType,

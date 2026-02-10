@@ -25,7 +25,6 @@ A powerful Mason brick to generate **Clean Architecture** compliant Blocs and Cu
 | :--- | :--- | :--- |
 | `feature_name` | The name of the feature (e.g., `Auth`, `Cart`). | Required |
 | `type` | The state management type: `bloc` or `cubit`. | `bloc` |
-| `state_style` | The state style: `multi` or `single`. | `multi` |
 | `methods` | A list of methods/events to generate. | `[]` |
 
 ### Interactive Mode
@@ -41,7 +40,7 @@ mason make nedo_bloc_generic
 Each method in the `methods` list has the following properties:
 
 - `name`: Name of the method/event (e.g., `login`).
-- `paramType`: Type of the parameter (e.g., `LoginParams`, `String`, `none (void)`).
+- `paramType`: Type of the parameter (e.g., `LoginParams`, `String`, `void`).
 - `returnType`: Type of the return value (e.g., `UserEntity`, `void`).
 - `concurrency` (Bloc only): `concurrent`, `droppable`, `restartable`, `sequential`.
 - `statePattern`: `standard` (Loading/Success/Failure), `optimistic`, or `simple`.
