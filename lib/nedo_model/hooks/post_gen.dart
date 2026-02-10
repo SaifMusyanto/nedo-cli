@@ -133,8 +133,7 @@ String _generateValidatorContent(Map<String, dynamic> model,
   final buffer = StringBuffer();
 
   // 1. Imports
-  buffer.writeln("import '../../core/abstraction/base_validator.dart';");
-  buffer.writeln("import '../../core/utils/validators.dart';");
+  buffer.writeln("import '../../../../core/utils/validators.dart';");
   buffer.writeln("import '../entities/${entityName.snakeCase}.dart';");
 
   // Import nested validators
@@ -149,8 +148,7 @@ String _generateValidatorContent(Map<String, dynamic> model,
   buffer.writeln();
 
   // 2. Class Declaration
-  buffer.writeln('class $validatorName extends BaseValidator<$entityName> {');
-  buffer.writeln('  @override');
+  buffer.writeln('class $validatorName {');
   buffer.writeln('  Map<String, String> validate($entityName data) {');
   buffer.writeln('    final errors = <String, String>{};');
   buffer.writeln();
@@ -236,10 +234,10 @@ String _generateValidatorContent(Map<String, dynamic> model,
 
       // 3. PASSWORD CHECK
       else if (lowerName.contains('password') || lowerName.contains('pass')) {
-        buffer
-            .writeln("      if (!Validators.isValidPassword($valueAccess)) {");
         buffer.writeln(
-            "        errors['$originalName'] = 'Password harus mengandung huruf besar, kecil, angka, spesial karakter dan min 8 karakter';");
+            "      if (!Validators.isValidPassword($valueAccess, requireSpecialChar: false)) {");
+        buffer.writeln(
+            "        errors['$originalName'] = 'Password minimal 8 karakter, mengandung huruf besar, kecil, dan angka';");
         buffer.writeln("      }");
       }
 
