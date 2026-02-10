@@ -3,4 +3,4 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - "lib/**/__brick__/**"
-    - example/**
+    - lib/nedo_bloc/example/**
