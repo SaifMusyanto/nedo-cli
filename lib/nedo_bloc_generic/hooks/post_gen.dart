@@ -87,13 +87,6 @@ Future<void> _generateStates(
         def = " = const []";
       }
 
-      // If nullable, default to null implicitly or explicitly?
-      // If not nullable and no default, distinct required.
-      // For simplicity, let's make non-enum/non-basic types required or nullable?
-      // Let's assume user inputs types correctly (e.g. User?).
-      // We will just add `required` if no default is provided for safety,
-      // unless it's nullable.
-
       if (def.isNotEmpty) {
         buffer.writeln("    this.$name$def,");
       } else if (type.endsWith('?')) {
@@ -150,7 +143,6 @@ Future<void> _generateStates(
     buffer.writeln("      ];");
     buffer.writeln("}");
   } else {
-    // --- Multi State Generation (Existing Logic) & MainType support ---
     final mainDataType = context.vars['main_data_type'] as String? ?? '';
 
     buffer.writeln("abstract class ${pascalName}State extends Equatable {");
@@ -164,13 +156,11 @@ Future<void> _generateStates(
     buffer.writeln("class ${pascalName}Initial extends ${pascalName}State {}");
     buffer.writeln();
 
-    // Track unique states to avoid duplicates
     final uniqueStates = <String>{};
 
     for (final h in handlers) {
       final name = h['pascalName'] as String;
-      final statePattern =
-          h['statePattern'] as String; // standard, optimistic, simple
+      final statePattern = h['statePattern'] as String;
       final returnType = h['returnType'] as String;
       final isVoid = h['isVoidReturn'] as bool;
 
@@ -190,38 +180,6 @@ Future<void> _generateStates(
         uniqueStates.add(successState);
         buffer.writeln("class $successState extends ${pascalName}State {");
 
-        // Logic: If mainDataType is set, use IT. Else use specific method return type.
-        // Actually, mainDataType is likely for "General" success.
-        // If we have specific methods returning specific things, do we merge them?
-        // The user said: "ganti data type ini untuk yang multi state aja jadi dia bakalan ditempatkan di bagian sukses."
-        // So if mainDataType exists, we might want a GenericSuccess or specific Success uses it?
-        // Let's assume if mainDataType is present, it OVERRIDES the specific return type for the success state
-        // OR we add it as an EXTRA field?
-        // Let's stick to the method's return type generally, BUT if mainDataType is provided,
-        // maybe the User intended a "MainSuccess" state?
-        // *Re-reading*: "Main data type for standard Success state".
-        // Since we generate unique success states per method (e.g. GetUserSuccess),
-        // maybe we should just apply it there if the method return type is void?
-        // OR better: The user might want a shared Success state?
-        // Current logic generates `MethodNameSuccess`.
-        // Let's apply mainDataType to any Success state if it matches?
-        // Actually, the simplest interpretation: If `main_data_type` is set,
-        // we might want a `class ${pascalName}Success` (Generic) instead of method specific?
-        // BUT the existing logic iterates handlers.
-        // Let's keep existing logic but if `main_data_type` is set, and the method return type is void, maybe use it?
-        // Valid use case: `v type` => List<User>. Method `unstar` returns void.
-        // On success, we might want to return the List<User> updated?
-        // Let's just USE the method's return type as before, but if `main_data_type` is set,
-        // maybe we shouldn't force it unless requested.
-        // WAIT, the prompt says "The main data type for the standard Success state".
-        // If the user sets it, they probably want it used.
-        // Let's stick to existing logic for now as it's safer per method.
-        // *Self-Correction*: I will use `mainDataType` if provided specifically for a `GeneralSuccess` or
-        // if we want to enforce it.
-        // Let's strictly follow the existing logic which uses `returnType`.
-        // `main_data_type` currently doesn't seem to hook into `handlers` loop well unless we force a handler?
-        // Maybe the user meant for the Single "Success" state in a simpler pattern?
-        // Let's iterate:
         if (mainDataType.isNotEmpty && (isVoid || returnType == 'void')) {
           buffer.writeln("  final $mainDataType data;");
           buffer.writeln();
@@ -482,10 +440,6 @@ Future<void> _generateCubit(
     }
   }
 
-  // If mainDataType is used and it's a model/entity, we hope it's imported via methods.
-  // If not, we might miss an import.
-  // Assuming strict architecture where methods cover the data types.
-
   buffer.writeln();
   buffer.writeln("part '${snakeName}_state.dart';");
   buffer.writeln();
@@ -534,13 +488,7 @@ Future<void> _generateCubit(
     buffer.writeln("      (data) {");
 
     if (!isVoid) {
-      // Try to find a property with matching type
-      // Implementation constraint: This is hard without reflection on context.vars['state_props'].
-      // Let's iterate context.vars['state_props'] to find a match!
       final props = context.vars['state_props'] as List<dynamic>;
-      // We need to match `returnType` (data's type) with a prop type.
-      // Note: returnType might be `List<UserEntity>` and prop might be `List<UserEntity>`.
-      // Simple string match.
       var dataField = '';
       for (final p in props) {
         if (p['type'] == h['returnType']) {

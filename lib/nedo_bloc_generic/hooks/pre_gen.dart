@@ -21,8 +21,6 @@ Future<void> run(HookContext context) async {
     final props = <Map<String, dynamic>>[];
     context.logger.info('\n--- Define State Properties ---');
 
-    // Add status by default? Usually single state has a status enum.
-    // Let's ask if they want a status field.
     if (context.logger
         .confirm('Add a "status" field (enum)?', defaultValue: true)) {
       props.add({
@@ -50,9 +48,7 @@ Future<void> run(HookContext context) async {
       });
     }
     context.vars['state_props'] = props;
-  }
-  // --- Multi State Config ---
-  else {
+  } else {
     if (!context.vars.containsKey('main_data_type')) {
       if (context.logger.confirm('Define a main data type for Success state?',
           defaultValue: false)) {
