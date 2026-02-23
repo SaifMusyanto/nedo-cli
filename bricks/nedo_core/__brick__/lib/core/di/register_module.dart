@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
-import 'package:moncube_mobile/core/services/storage_service/secure/secure_storage_service.dart';
+import '../services/storage_service/secure/secure_storage_service.dart';
 import 'package:sqflite/sqflite.dart';
 import '../services/network_service/config/api_config.dart';
 import '../services/storage_service/db/database_module.dart';

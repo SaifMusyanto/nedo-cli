@@ -1,4 +1,4 @@
-import 'package:moncube_mobile/core/config/constants/database_constants.dart';
+import '../../../config/constants/database_constants.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'access_permission_table.dart';

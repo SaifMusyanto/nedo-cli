@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:moncube_mobile/core/services/network_service/dio_client.dart';
-import 'package:moncube_mobile/core/services/network_service/models/response/base_pagination_response.dart';
+import '../services/network_service/dio_client.dart';
+import '../services/network_service/models/response/base_pagination_response.dart';
 
 final voidType = _getType<void>();
 Type _getType<T>() => T;

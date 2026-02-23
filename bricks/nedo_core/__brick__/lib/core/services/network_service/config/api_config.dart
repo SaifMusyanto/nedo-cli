@@ -1,4 +1,4 @@
-import 'package:moncube_mobile/core/config/constants/endpoint_constant.dart';
+import '../../../config/constants/endpoint_constant.dart';
 
 class ApiConfig {
   final String baseUrl;

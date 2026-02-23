@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:moncube_mobile/core/config/theme/app_styles.dart';
+import '../../../../config/theme/app_styles.dart';
 
 class OutlineButton extends StatelessWidget {
   final String label;

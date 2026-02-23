@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:moncube_mobile/core/config/constants/app_colors.dart';
-import 'package:moncube_mobile/core/utils/extensions/extensions.dart';
+import '../../../config/constants/app_colors.dart';
+import '../../../utils/extensions/extensions.dart';
 
 class BaseTitle extends StatelessWidget {
   final String title;

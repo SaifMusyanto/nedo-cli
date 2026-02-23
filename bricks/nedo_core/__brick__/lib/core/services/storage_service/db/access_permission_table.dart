@@ -1,4 +1,4 @@
-import 'package:moncube_mobile/core/config/constants/database_constants.dart';
+import '../../../config/constants/database_constants.dart';
 import '../../../domain/access/entities/access_permission_entity.dart';
 import 'base_database_table.dart';
 
