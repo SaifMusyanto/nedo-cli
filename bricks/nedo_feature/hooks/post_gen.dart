@@ -53,6 +53,8 @@ Future<void> run(HookContext context) async {
 
     await _generateBloc(context, acronyms);
 
+    await _injectEndpoints(context, featureName);
+
     featureProgress.complete('Feature $featureName generated successfully!');
 
     // Format code
@@ -113,15 +115,34 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
 
     if (isPaginated) {
       imports.add(
-          "import '../../../../core/services/network_service/models/base_list_request_model.dart';");
+          "import '../../../../core/network/models/base_list_request_model.dart';");
       imports.add(
-          "import '../../../../core/services/network_service/models/pagination_response_model.dart';");
+          "import '../../../../core/services/network_service/models/response/base_pagination_response.dart';");
+    }
+
+    final pathParams =
+        (method['pathParams'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    bool needsWrapper = false;
+    String wrapperName = '${rawName.pascalCase}Params';
+    if (pathParams.isNotEmpty &&
+        (paramType != 'void' || isPaginated || pathParams.length > 1)) {
+      needsWrapper = true;
     }
 
     final innerReturn = nameProvider.getInnerType(returnType);
     final mappedReturnType =
-        isPaginated ? 'PaginationResponseModel<$innerReturn>' : returnType;
-    final mappedParamType = isPaginated ? 'BaseListRequestModel' : paramType;
+        isPaginated ? 'BasePaginationResponse<$innerReturn>' : returnType;
+
+    String mappedParamType = 'NoParams';
+    if (needsWrapper) {
+      mappedParamType = wrapperName;
+    } else if (pathParams.isNotEmpty) {
+      mappedParamType = pathParams.first['type'];
+    } else if (isPaginated) {
+      mappedParamType = 'BaseListRequestModel';
+    } else if (paramType != 'void') {
+      mappedParamType = paramType;
+    }
 
     handlers.add({
       'name': rawName,
@@ -131,8 +152,9 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
       'stateFailure': '${featureName.pascalCase}Error',
       'useCaseName': '${pascalName}UseCase',
       'useCaseVar': '_${camelName}UseCase',
-      'hasParams': isPaginated ? true : paramType != 'void',
+      'hasParams': mappedParamType != 'void' && mappedParamType != 'NoParams',
       'paramType': mappedParamType,
+      'isWrapperParam': needsWrapper,
       'isVoidReturn': returnType == 'void',
       'returnType': mappedReturnType,
       'statePattern': 'standard', // Defaulting to standard for auto-generated
@@ -143,4 +165,40 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
   context.vars['imports'] = imports.toList();
 
   await bloc_post_gen.run(context);
+}
+
+Future<void> _injectEndpoints(HookContext context, String featureName) async {
+  final injectedEndpoints =
+      context.vars['injected_endpoints'] as List<dynamic>?;
+  if (injectedEndpoints == null || injectedEndpoints.isEmpty) return;
+
+  final endpointFile = File('lib/core/config/constants/endpoint_constant.dart');
+  if (!await endpointFile.exists()) {
+    context.logger
+        .warn('Could not find endpoint_constant.dart to inject URLs.');
+    return;
+  }
+
+  try {
+    String content = await endpointFile.readAsString();
+    final lastBrace = content.lastIndexOf('}');
+    if (lastBrace != -1) {
+      final buffer = StringBuffer();
+      buffer.writeln();
+      buffer.writeln('  // --- [Auto-generated for $featureName] ---');
+      for (final ep in injectedEndpoints) {
+        if (ep is Map) {
+          final name = ep['name'];
+          final url = ep['url'];
+          buffer.writeln("  static const String $name = '$url';");
+        }
+      }
+
+      content = content.replaceRange(lastBrace, lastBrace, buffer.toString());
+      await endpointFile.writeAsString(content);
+      context.logger.success('Injected endpoints into EndpointConstant.');
+    }
+  } catch (e) {
+    context.logger.warn('Failed to inject endpoints: \$e');
+  }
 }

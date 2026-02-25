@@ -25,9 +25,9 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
     content.writeln("import '../../../../core/errors/failures.dart';");
     // Base Models Import
     content.writeln(
-        "import '../../../../core/services/network_service/models/base_list_request_model.dart';");
+        "import '../../../../core/network/models/base_list_request_model.dart';");
     content.writeln(
-        "import '../../../../core/services/network_service/models/pagination_response_model.dart';");
+        "import '../../../../core/services/network_service/models/response/base_pagination_response.dart';");
 
     final usedEntities = <String>{};
     for (final m in methods) {
@@ -82,16 +82,27 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
 
       String ret = returnType == 'void' ? 'void' : returnType;
       if (isPaginated && innerReturn.endsWith('Entity')) {
-        ret = 'PaginationResponseModel<$innerReturn>';
+        ret = 'BasePaginationResponse<$innerReturn>';
       }
+
+      final pathParams =
+          (m['pathParams'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
       String params = '';
+      List<String> paramParts = [];
+      for (var p in pathParams) {
+        final pName = p['name'];
+        final pType = p['type'];
+        paramParts.add('$pType $pName');
+      }
 
       if (isPaginated) {
-        params = 'BaseListRequestModel params';
+        paramParts.add('BaseListRequestModel params');
       } else if (paramType != 'void') {
-        params = '$paramType params';
+        paramParts.add('$paramType params');
       }
+
+      params = paramParts.join(', ');
 
       content.writeln('  Future<Either<Failure, $ret>> $methodName($params);');
     }

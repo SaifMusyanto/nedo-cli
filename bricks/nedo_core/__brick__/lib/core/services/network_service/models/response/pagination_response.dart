@@ -26,4 +26,3 @@ class PaginationResponse {
     'totalPages': totalPages,
   };
 }
-

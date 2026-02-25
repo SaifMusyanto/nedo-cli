@@ -12,9 +12,9 @@ class BaseResponse<T> {
   });
 
   factory BaseResponse.fromJson(
-      Map<String, dynamic> json,
-      T Function(Object? json) fromJsonT,
-      ) {
+    Map<String, dynamic> json,
+    T Function(Object? json) fromJsonT,
+  ) {
     return BaseResponse<T>(
       success: json['success'] as bool,
       code: json['code'] as String,

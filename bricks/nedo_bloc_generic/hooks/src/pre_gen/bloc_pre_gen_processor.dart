@@ -134,7 +134,11 @@ class BlocPreGenProcessor {
       if (paramType != 'void' &&
           !['String', 'int', 'bool'].contains(paramType)) {
         final innerParam = _getInnerType(paramType);
-        if (innerParam.endsWith('Params') || innerParam.endsWith('Entity')) {
+        if (innerParam == 'BaseListRequestModel') {
+          imports.add(
+              "import '../../../../core/network/models/base_list_request_model.dart';");
+        } else if (innerParam.endsWith('Params') ||
+            innerParam.endsWith('Entity')) {
           imports.add(
               "import '../../domain/entities/${toSnakeCaseWithAcronyms(innerParam, acronyms)}.dart';");
         }

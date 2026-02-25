@@ -39,9 +39,9 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
     );
     // Base Models Import updated
     content.writeln(
-        "import '../../../../core/services/network_service/models/base_list_request_model.dart';");
+        "import '../../../../core/network/models/base_list_request_model.dart';");
     content.writeln(
-        "import '../../../../core/services/network_service/models/pagination_response_model.dart';");
+        "import '../../../../core/services/network_service/models/response/base_pagination_response.dart';");
 
     final usedMappers = <String>{};
     for (final m in methods) {
@@ -53,9 +53,10 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
         );
         String modelName;
         if (innerType.endsWith('Entity')) {
-          modelName = innerType.replaceAll('Entity', 'Model');
+          modelName = '${innerType.substring(0, innerType.length - 6)}Model';
         } else {
-          modelName = innerType.replaceAll('Params', 'Model');
+          modelName =
+              '${innerType.substring(0, innerType.length - 6)}Model'; // For Params which is also 6 chars
         }
         usedMappers
             .add('${toSnakeCaseWithAcronyms(modelName, acronyms)}_mapper');
@@ -107,19 +108,37 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
 
       String ret = returnType == 'void' ? 'void' : returnType;
       if (isPaginated && innerReturn.endsWith('Entity')) {
-        ret = 'PaginationResponseModel<$innerReturn>';
+        ret = 'BasePaginationResponse<$innerReturn>';
       }
+
+      final pathParams =
+          (m['pathParams'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
       String params = '';
       String callParams = '';
+      List<String> paramParts = [];
+      List<String> callParts = [];
+      for (var p in pathParams) {
+        final pName = p['name'];
+        final pType = p['type'];
+        paramParts.add('$pType $pName');
+        callParts.add(pName);
+      }
 
       if (isPaginated) {
-        params = 'BaseListRequestModel params';
-        callParams = 'params';
+        paramParts.add('BaseListRequestModel params');
+        callParts.add('params');
       } else if (paramType != 'void') {
-        params = '$paramType params';
-        callParams = 'params';
+        paramParts.add('$paramType params');
+        if (paramType.endsWith('Entity') || paramType.endsWith('Params')) {
+          callParts.add('params.toModel()');
+        } else {
+          callParts.add('params');
+        }
       }
+
+      params = paramParts.join(', ');
+      callParams = callParts.join(', ');
 
       content.writeln('  @override');
       content.writeln(
@@ -131,7 +150,7 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
         content.writeln(
           '      final result = await $remoteVar.$methodName($callParams);',
         );
-        content.writeln('      return PaginationResponseModel(');
+        content.writeln('      return BasePaginationResponse(');
         content.writeln(
             '        items: result.items.map((e) => e.toEntity()).toList(),');
         content.writeln('        pagination: result.pagination,');

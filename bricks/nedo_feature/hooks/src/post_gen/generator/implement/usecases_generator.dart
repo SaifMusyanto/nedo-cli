@@ -48,7 +48,7 @@ class UsecasesGenerator extends FeatureGenerator {
       content.writeln("import 'package:injectable/injectable.dart';");
       content.writeln("import '../../../../core/errors/failures.dart';");
       content.writeln(
-        "import '../../../../core/usecase/usecase.dart';",
+        "import '../../../../core/usecases/usecase.dart';",
       );
       content.writeln(
         "import '../repositories/${toSnakeCaseWithAcronyms(featureName, acronyms)}_repository.dart';",
@@ -56,9 +56,9 @@ class UsecasesGenerator extends FeatureGenerator {
       // Base Models Import
       if (isPaginated) {
         content.writeln(
-            "import '../../../../core/services/network_service/models/base_list_request_model.dart';");
+            "import '../../../../core/network/models/base_list_request_model.dart';");
         content.writeln(
-            "import '../../../../core/services/network_service/models/pagination_response_model.dart';");
+            "import '../../../../core/services/network_service/models/response/base_pagination_response.dart';");
       }
 
       if (innerReturn.endsWith('Entity')) {
@@ -74,20 +74,59 @@ class UsecasesGenerator extends FeatureGenerator {
         );
       }
 
-      content.writeln();
+      final pathParams =
+          (m['pathParams'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      bool needsWrapper = false;
+      String wrapperName = '${methodName.pascalCase}Params';
+
+      if (pathParams.isNotEmpty &&
+          (paramType != 'void' || isPaginated || pathParams.length > 1)) {
+        needsWrapper = true;
+      }
+
+      if (needsWrapper) {
+        content.writeln('class $wrapperName {');
+        for (var p in pathParams) {
+          content.writeln('  final ${p['type']} ${p['name']};');
+        }
+        if (isPaginated) {
+          content.writeln('  final BaseListRequestModel params;');
+        } else if (paramType != 'void') {
+          content.writeln('  final $paramType params;');
+        }
+        content.writeln();
+        content.writeln('  $wrapperName({');
+        for (var p in pathParams) {
+          content.writeln('    required this.${p['name']},');
+        }
+        if (isPaginated || paramType != 'void') {
+          content.writeln('    required this.params,');
+        }
+        content.writeln('  });');
+        content.writeln('}');
+        content.writeln();
+      }
+
       content.writeln('@injectable');
 
       String ret = returnType == 'void' ? 'void' : returnType;
       if (isPaginated && innerReturn.endsWith('Entity')) {
-        ret = 'PaginationResponseModel<$innerReturn>';
+        ret = 'BasePaginationResponse<$innerReturn>';
       }
 
-      String param = paramType == 'void' ? 'NoParams' : paramType;
-      if (isPaginated) {
-        param = 'BaseListRequestModel';
+      String useCaseParam = 'NoParams';
+      if (needsWrapper) {
+        useCaseParam = wrapperName;
+      } else if (pathParams.isNotEmpty) {
+        useCaseParam = pathParams.first['type']; // Example: String
+      } else if (isPaginated) {
+        useCaseParam = 'BaseListRequestModel';
+      } else if (paramType != 'void') {
+        useCaseParam = paramType;
       }
 
-      content.writeln('class $useCaseName implements UseCase<$ret, $param> {');
+      content.writeln(
+          'class $useCaseName implements UseCase<$ret, $useCaseParam> {');
       content
           .writeln('  final ${featureName.pascalCase}Repository repository;');
       content.writeln();
@@ -95,13 +134,25 @@ class UsecasesGenerator extends FeatureGenerator {
       content.writeln();
       content.writeln('  @override');
       content.writeln(
-        '  Future<Either<Failure, $ret>> call($param params) async {',
-      );
-      if (paramType == 'void' && !isPaginated) {
-        content.writeln('    return repository.$methodName();');
-      } else {
-        content.writeln('    return repository.$methodName(params);');
+          '  Future<Either<Failure, $ret>> call($useCaseParam params) async {');
+
+      List<String> repoCallArgs = [];
+      if (needsWrapper) {
+        for (var p in pathParams) {
+          repoCallArgs.add('params.${p['name']}');
+        }
+        if (isPaginated || paramType != 'void') {
+          repoCallArgs.add('params.params');
+        }
+      } else if (pathParams.isNotEmpty) {
+        repoCallArgs.add('params');
+      } else if (isPaginated || paramType != 'void') {
+        repoCallArgs.add('params');
       }
+
+      String repoCallStr = repoCallArgs.join(', ');
+
+      content.writeln('    return repository.$methodName($repoCallStr);');
       content.writeln('  }');
       content.writeln('}');
 

@@ -33,17 +33,21 @@ class CubitGenerator extends BlocGeneratorBase {
     for (final handler in handlers) {
       final paramType = handler['paramType'];
       final hasParams = handler['hasParams'] as bool;
+      final isWrapperParam = handler['isWrapperParam'] as bool? ?? false;
       String? importParams;
-      if (hasParams) {
+      if (hasParams && !isWrapperParam) {
         final innerParam = getInnerType(paramType);
-        if (innerParam != 'void' &&
+        if (innerParam == 'BaseListRequestModel') {
+          importParams =
+              "import '../../../../core/network/models/base_list_request_model.dart';";
+        } else if (innerParam != 'void' &&
             !['String', 'int', 'bool', 'double'].contains(innerParam)) {
           importParams =
               "import '../../domain/entities/${toSnakeCaseWithAcronyms(innerParam, acronyms)}.dart';";
         }
-      } else {
+      } else if (!hasParams) {
         // path fix
-        importParams = "import '../../../../core/usecase/usecase.dart';";
+        importParams = "import '../../../../core/usecases/usecase.dart';";
       }
       if (importParams != null && !imports.toString().contains(importParams)) {
         imports.add(importParams);

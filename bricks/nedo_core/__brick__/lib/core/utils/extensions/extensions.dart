@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../theme/custom_colors.dart';
 
-
 extension MediaQueryContextExtension on BuildContext {
   Size get screenSize => MediaQuery.of(this).size;
   double get screenWidth => screenSize.width;

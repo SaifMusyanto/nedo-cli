@@ -35,11 +35,13 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
     content.writeln(
       "import '../interfaces/i_remote_${toSnakeCaseWithAcronyms(featureName, acronyms)}_provider.dart';",
     );
+    content.writeln(
+        "import '../../../../../../core/config/constants/endpoint_constant.dart';");
     // Base Models Import
     content.writeln(
-        "import '../../../../../../core/services/network_service/models/base_list_request_model.dart';");
+        "import '../../../../../../core/network/models/base_list_request_model.dart';");
     content.writeln(
-        "import '../../../../../../core/services/network_service/models/pagination_response_model.dart';");
+        "import '../../../../../../core/services/network_service/models/response/base_pagination_response.dart';");
 
     final usedEntities = <String>{};
     final usedModels = <String>{};
@@ -49,7 +51,8 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
       final innerReturn = names.getInnerType(returnType);
 
       if (innerReturn.endsWith('Entity')) {
-        usedModels.add(innerReturn.replaceAll('Entity', 'Model'));
+        usedModels
+            .add('${innerReturn.substring(0, innerReturn.length - 6)}Model');
       }
 
       final paramType = m['paramType'] as String;
@@ -96,63 +99,91 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
 
       String baseType = innerReturn;
       if (innerReturn.endsWith('Entity')) {
-        baseType = innerReturn.replaceAll('Entity', 'Model');
+        baseType = '${innerReturn.substring(0, innerReturn.length - 6)}Model';
       }
 
       String ret = baseType;
       if (isPaginated) {
-        ret = 'PaginationResponseModel<$baseType>';
+        ret = 'BasePaginationResponse<$baseType>';
       } else if (returnType.startsWith('List<')) {
         ret = 'List<$baseType>';
       }
 
+      final pathParams =
+          (m['pathParams'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final urlConstName = m['urlConstName'] as String?;
+
       String params = '';
-      if (isPaginated) {
-        params = 'BaseListRequestModel params';
-      } else if (paramType != 'void') {
-        params = '$paramType params';
+      List<String> paramParts = [];
+      for (var p in pathParams) {
+        final pName = p['name'];
+        final pType = p['type'];
+        paramParts.add('$pType $pName');
       }
+
+      if (isPaginated) {
+        paramParts.add('BaseListRequestModel params');
+      } else if (paramType != 'void') {
+        paramParts.add('$paramType params');
+      }
+
+      params = paramParts.join(', ');
 
       content.writeln('  @override');
       content.writeln('  Future<$ret> $methodName($params) async {');
-      content.writeln('    // TODO: Implement $methodName');
 
-      if (isPaginated) {
-        content.writeln('    // return handlePagination(');
-        content.writeln('    //   dioClient,');
-        content.writeln("    //   endpoint: '/api/v1/path/to/endpoint',");
-        content.writeln('    //   requestBody: params.toMap(),');
-        content.writeln('    //   itemMapper: $baseType.fromMap,');
-        content.writeln('    // );');
-      } else if (returnType.startsWith('List<')) {
-        content.writeln('    // return handleGetList(');
-        content.writeln('    //   dioClient,');
-        content.writeln("    //   endpoint: '/api/v1/path/to/endpoint',");
-        content.writeln('    //   itemMapper: $baseType.fromMap,');
-        content.writeln('    // );');
-      } else {
-        if (paramType != 'void' && paramType.endsWith('Model') ||
-            paramType.endsWith('Request')) {
-          content.writeln('    // return handlePost(');
-          content.writeln('    //   dioClient,');
-          content.writeln("    //   endpoint: '/api/v1/path/to/endpoint',");
-          content.writeln('    //   body: params.toMap(),');
-          if (baseType != 'void') {
-            content.writeln('    //   mapper: $baseType.fromMap,');
-          }
-          content.writeln('    // );');
+      if (urlConstName != null) {
+        if (pathParams.isEmpty) {
+          content
+              .writeln('    final endpoint = EndpointConstant.$urlConstName;');
         } else {
-          content.writeln('    // return handleGet(');
-          content.writeln('    //   dioClient,');
-          content.writeln("    //   endpoint: '/api/v1/path/to/endpoint',");
-          if (baseType != 'void') {
-            content.writeln('    //   mapper: $baseType.fromMap,');
+          content.writeln('    var endpoint = EndpointConstant.$urlConstName;');
+          for (var p in pathParams) {
+            final pName = p['name'];
+            content.writeln(
+                "    endpoint = endpoint.replaceAll('{$pName}', $pName.toString());");
           }
-          content.writeln('    // );');
         }
+      } else {
+        content.writeln("    final endpoint = '/api/v1/path/to/endpoint';");
+        content.writeln('    // TODO: Implement $methodName');
       }
 
-      content.writeln('    throw UnimplementedError();');
+      if (isPaginated) {
+        content.writeln('    return handlePagination<$baseType>(');
+        content.writeln('      dioClient,');
+        content.writeln('      endpoint: endpoint,');
+        content.writeln('      requestBody: params.toMap(),');
+        content.writeln('      itemMapper: (json) => $baseType.fromMap(json),');
+        content.writeln('    );');
+      } else if (returnType.startsWith('List<')) {
+        content.writeln('    return handleGetList(');
+        content.writeln('      dioClient,');
+        content.writeln('      endpoint: endpoint,');
+        content.writeln('      itemMapper: (json) => $baseType.fromMap(json),');
+        content.writeln('    );');
+      } else {
+        if (paramType != 'void' && paramType.endsWith('Model') ||
+            paramType.endsWith('Request') ||
+            paramType.endsWith('Params')) {
+          content.writeln('    return handlePost(');
+          content.writeln('      dioClient,');
+          content.writeln('      endpoint: endpoint,');
+          content.writeln('      body: {"data": params.toMap()},');
+          if (baseType != 'void') {
+            content.writeln('      mapper: (json) => $baseType.fromMap(json),');
+          }
+          content.writeln('    );');
+        } else {
+          content.writeln('    return handleGet(');
+          content.writeln('      dioClient,');
+          content.writeln('      endpoint: endpoint,');
+          if (baseType != 'void') {
+            content.writeln('      mapper: (json) => $baseType.fromMap(json),');
+          }
+          content.writeln('    );');
+        }
+      }
 
       content.writeln('  }');
       content.writeln();

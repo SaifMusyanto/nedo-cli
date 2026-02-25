@@ -51,5 +51,5 @@ class AppColors {
   static const success10 = Color(0xFFCEEEE3);
 
   static const info10 = Color(0xFFD7E9FD);
-// You would also define info colors for text and dark mode here
+  // You would also define info colors for text and dark mode here
 }

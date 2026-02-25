@@ -23,9 +23,9 @@ class RemoteProviderInterfaceGenerator extends FeatureGenerator {
 
     // Base Models Import
     content.writeln(
-        "import '../../../../../../core/services/network_service/models/base_list_request_model.dart';");
+        "import '../../../../../../core/network/models/base_list_request_model.dart';");
     content.writeln(
-        "import '../../../../../../core/services/network_service/models/pagination_response_model.dart';");
+        "import '../../../../../../core/services/network_service/models/response/base_pagination_response.dart';");
 
     final usedModels = <String>{};
     final usedEntities = <String>{};
@@ -34,7 +34,8 @@ class RemoteProviderInterfaceGenerator extends FeatureGenerator {
       final innerReturn = names.getInnerType(returnType);
 
       if (innerReturn.endsWith('Entity')) {
-        usedModels.add(innerReturn.replaceAll('Entity', 'Model'));
+        usedModels
+            .add('${innerReturn.substring(0, innerReturn.length - 6)}Model');
       }
 
       final paramType = m['paramType'] as String;
@@ -71,22 +72,34 @@ class RemoteProviderInterfaceGenerator extends FeatureGenerator {
 
       String baseType = innerReturn;
       if (innerReturn.endsWith('Entity')) {
-        baseType = innerReturn.replaceAll('Entity', 'Model');
+        baseType = '${innerReturn.substring(0, innerReturn.length - 6)}Model';
       }
 
       String ret = baseType;
       if (isPaginated) {
-        ret = 'PaginationResponseModel<$baseType>';
+        ret = 'BasePaginationResponse<$baseType>';
       } else if (returnType.startsWith('List<')) {
         ret = 'List<$baseType>';
       }
 
+      final pathParams =
+          (m['pathParams'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+
       String params = '';
-      if (isPaginated) {
-        params = 'BaseListRequestModel params';
-      } else if (paramType != 'void') {
-        params = '$paramType params';
+      List<String> paramParts = [];
+      for (var p in pathParams) {
+        final pName = p['name'];
+        final pType = p['type'];
+        paramParts.add('$pType $pName');
       }
+
+      if (isPaginated) {
+        paramParts.add('BaseListRequestModel params');
+      } else if (paramType != 'void') {
+        paramParts.add('$paramType params');
+      }
+
+      params = paramParts.join(', ');
 
       content.writeln('  Future<$ret> $methodName($params);');
     }

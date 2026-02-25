@@ -24,9 +24,11 @@ class NameProvider {
 
   String _getModelName(String original) {
     if (original.endsWith('DTO')) {
-      return original.replaceAll('DTO', 'Model');
+      return '${original.substring(0, original.length - 3)}Model';
     } else if (original.endsWith('Data')) {
-      return original.replaceAll('Data', 'Model');
+      return '${original.substring(0, original.length - 4)}Model';
+    } else if (original.endsWith('BaseRequest')) {
+      return '${original.substring(0, original.length - 11)}Model';
     } else if (original.endsWith('Request')) {
       return '${original}Model';
     }
@@ -35,11 +37,13 @@ class NameProvider {
 
   String _getEntityName(String original) {
     if (original.endsWith('DTO')) {
-      return original.replaceAll('DTO', 'Entity');
+      return '${original.substring(0, original.length - 3)}Entity';
     } else if (original.endsWith('Data')) {
-      return original.replaceAll('Data', 'Entity');
+      return '${original.substring(0, original.length - 4)}Entity';
+    } else if (original.endsWith('BaseRequest')) {
+      return '${original.substring(0, original.length - 11)}Params';
     } else if (original.endsWith('Request')) {
-      return original.replaceAll('Request', 'Params');
+      return '${original.substring(0, original.length - 7)}Params';
     }
     return '${original}Entity';
   }
