@@ -104,20 +104,34 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
             "import '../../domain/entities/${toSnakeCaseWithAcronyms(innerParam, acronyms)}.dart';");
       }
     }
+    final innerReturn = nameProvider.getInnerType(returnType);
+    final mappedReturnType =
+        isPaginated ? 'BasePaginationResponse<$innerReturn>' : returnType;
+
+    bool isReturnUsed = false;
+    if (context.vars['is_bloc'] == true) {
+      isReturnUsed = true;
+    } else {
+      final props = context.vars['state_props'] as List<dynamic>? ?? [];
+      isReturnUsed = props.any((p) {
+        final type = p['type'] as String;
+        return type == mappedReturnType || type == '$mappedReturnType?';
+      });
+    }
+
     if (returnType != 'void' &&
-        !['String', 'int', 'bool'].contains(returnType)) {
-      final innerReturn = nameProvider.getInnerType(returnType);
-      if (innerReturn.endsWith('Entity')) {
+        !['String', 'int', 'bool', 'double'].contains(returnType)) {
+      if (isReturnUsed && innerReturn.endsWith('Entity')) {
         imports.add(
             "import '../../domain/entities/${toSnakeCaseWithAcronyms(innerReturn, acronyms)}.dart';");
       }
     }
 
     if (isPaginated) {
-      imports.add(
-          "import '../../../../core/network/models/base_list_request_model.dart';");
-      imports.add(
-          "import '../../../../core/services/network_service/models/response/base_pagination_response.dart';");
+      if (isReturnUsed) {
+        imports.add(
+            "import '../../../../core/services/network_service/models/response/base_pagination_response.dart';");
+      }
     }
 
     final pathParams =
@@ -129,9 +143,9 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
       needsWrapper = true;
     }
 
-    final innerReturn = nameProvider.getInnerType(returnType);
-    final mappedReturnType =
-        isPaginated ? 'BasePaginationResponse<$innerReturn>' : returnType;
+    final innerReturn2 = nameProvider.getInnerType(returnType);
+    final mappedReturnType2 =
+        isPaginated ? 'BasePaginationResponse<$innerReturn2>' : returnType;
 
     String mappedParamType = 'NoParams';
     if (needsWrapper) {
@@ -139,7 +153,7 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
     } else if (pathParams.isNotEmpty) {
       mappedParamType = pathParams.first['type'];
     } else if (isPaginated) {
-      mappedParamType = 'BaseListRequestModel';
+      mappedParamType = 'BasePaginationRequest';
     } else if (paramType != 'void') {
       mappedParamType = paramType;
     }
@@ -156,7 +170,7 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
       'paramType': mappedParamType,
       'isWrapperParam': needsWrapper,
       'isVoidReturn': returnType == 'void',
-      'returnType': mappedReturnType,
+      'returnType': mappedReturnType2,
       'statePattern': 'standard', // Defaulting to standard for auto-generated
     });
   }

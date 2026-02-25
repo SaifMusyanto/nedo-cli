@@ -56,7 +56,7 @@ class UsecasesGenerator extends FeatureGenerator {
       // Base Models Import
       if (isPaginated) {
         content.writeln(
-            "import '../../../../core/network/models/base_list_request_model.dart';");
+            "import '../../../../core/services/network_service/models/request/base_pagination_request.dart';");
         content.writeln(
             "import '../../../../core/services/network_service/models/response/base_pagination_response.dart';");
       }
@@ -68,10 +68,29 @@ class UsecasesGenerator extends FeatureGenerator {
       }
 
       final innerParam = names.getInnerType(paramType);
-      if (innerParam.endsWith('Entity') || innerParam.endsWith('Params')) {
-        content.writeln(
-          "import '../entities/${toSnakeCaseWithAcronyms(innerParam, acronyms)}.dart';",
-        );
+
+      String mappedInnerParam = innerParam;
+      if (innerParam.endsWith('BaseRequest')) {
+        mappedInnerParam =
+            '${innerParam.substring(0, innerParam.length - 11)}Params';
+      } else if (innerParam.endsWith('Request')) {
+        mappedInnerParam =
+            '${innerParam.substring(0, innerParam.length - 7)}Params';
+      } else if (innerParam.endsWith('Model')) {
+        mappedInnerParam =
+            '${innerParam.substring(0, innerParam.length - 5)}Params';
+      }
+
+      String mappedParamType =
+          paramType.replaceFirst(innerParam, mappedInnerParam);
+
+      if (!isPaginated) {
+        if (mappedInnerParam.endsWith('Entity') ||
+            mappedInnerParam.endsWith('Params')) {
+          content.writeln(
+            "import '../entities/${toSnakeCaseWithAcronyms(mappedInnerParam, acronyms)}.dart';",
+          );
+        }
       }
 
       final pathParams =
@@ -80,7 +99,7 @@ class UsecasesGenerator extends FeatureGenerator {
       String wrapperName = '${methodName.pascalCase}Params';
 
       if (pathParams.isNotEmpty &&
-          (paramType != 'void' || isPaginated || pathParams.length > 1)) {
+          (mappedParamType != 'void' || isPaginated || pathParams.length > 1)) {
         needsWrapper = true;
       }
 
@@ -90,16 +109,16 @@ class UsecasesGenerator extends FeatureGenerator {
           content.writeln('  final ${p['type']} ${p['name']};');
         }
         if (isPaginated) {
-          content.writeln('  final BaseListRequestModel params;');
-        } else if (paramType != 'void') {
-          content.writeln('  final $paramType params;');
+          content.writeln('  final BasePaginationRequest params;');
+        } else if (mappedParamType != 'void') {
+          content.writeln('  final $mappedParamType params;');
         }
         content.writeln();
         content.writeln('  $wrapperName({');
         for (var p in pathParams) {
           content.writeln('    required this.${p['name']},');
         }
-        if (isPaginated || paramType != 'void') {
+        if (isPaginated || mappedParamType != 'void') {
           content.writeln('    required this.params,');
         }
         content.writeln('  });');
@@ -120,9 +139,9 @@ class UsecasesGenerator extends FeatureGenerator {
       } else if (pathParams.isNotEmpty) {
         useCaseParam = pathParams.first['type']; // Example: String
       } else if (isPaginated) {
-        useCaseParam = 'BaseListRequestModel';
-      } else if (paramType != 'void') {
-        useCaseParam = paramType;
+        useCaseParam = 'BasePaginationRequest';
+      } else if (mappedParamType != 'void') {
+        useCaseParam = mappedParamType;
       }
 
       content.writeln(
@@ -141,12 +160,12 @@ class UsecasesGenerator extends FeatureGenerator {
         for (var p in pathParams) {
           repoCallArgs.add('params.${p['name']}');
         }
-        if (isPaginated || paramType != 'void') {
+        if (isPaginated || mappedParamType != 'void') {
           repoCallArgs.add('params.params');
         }
       } else if (pathParams.isNotEmpty) {
         repoCallArgs.add('params');
-      } else if (isPaginated || paramType != 'void') {
+      } else if (isPaginated || mappedParamType != 'void') {
         repoCallArgs.add('params');
       }
 

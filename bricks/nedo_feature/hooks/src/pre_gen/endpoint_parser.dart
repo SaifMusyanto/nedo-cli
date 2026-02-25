@@ -64,10 +64,6 @@ class EndpointParser {
           .toList();
       String rawMethodName =
           httpMethod + pathParts.map((e) => e.pascalCase).join('');
-      if (rawMethodName.length > 30) {
-        rawMethodName =
-            httpMethod + pathParts.last.pascalCase; // fallback to shorter name
-      }
       final methodName = rawMethodName.camelCase;
 
       final urlConstName =

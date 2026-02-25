@@ -134,9 +134,9 @@ class BlocPreGenProcessor {
       if (paramType != 'void' &&
           !['String', 'int', 'bool'].contains(paramType)) {
         final innerParam = _getInnerType(paramType);
-        if (innerParam == 'BaseListRequestModel') {
+        if (innerParam == 'BasePaginationRequest') {
           imports.add(
-              "import '../../../../core/network/models/base_list_request_model.dart';");
+              "import '../../../../../../core/services/network_service/models/request/base_pagination_request.dart';");
         } else if (innerParam.endsWith('Params') ||
             innerParam.endsWith('Entity')) {
           imports.add(
@@ -144,9 +144,21 @@ class BlocPreGenProcessor {
         }
       }
       if (returnType != 'void' &&
-          !['String', 'int', 'bool'].contains(returnType)) {
+          !['String', 'int', 'bool', 'double'].contains(returnType)) {
         final innerReturn = _getInnerType(returnType);
-        if (innerReturn.endsWith('Entity')) {
+
+        bool isReturnUsed = false;
+        if (isBloc) {
+          isReturnUsed = true;
+        } else {
+          final props = context.vars['state_props'] as List<dynamic>? ?? [];
+          isReturnUsed = props.any((p) {
+            final type = p['type'] as String;
+            return type == returnType || type == '$returnType?';
+          });
+        }
+
+        if (isReturnUsed && innerReturn.endsWith('Entity')) {
           imports.add(
               "import '../../domain/entities/${toSnakeCaseWithAcronyms(innerReturn, acronyms)}.dart';");
         }

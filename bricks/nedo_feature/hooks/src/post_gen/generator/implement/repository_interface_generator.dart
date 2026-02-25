@@ -25,7 +25,7 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
     content.writeln("import '../../../../core/errors/failures.dart';");
     // Base Models Import
     content.writeln(
-        "import '../../../../core/network/models/base_list_request_model.dart';");
+        "import '../../../../core/services/network_service/models/request/base_pagination_request.dart';");
     content.writeln(
         "import '../../../../core/services/network_service/models/response/base_pagination_response.dart';");
 
@@ -46,11 +46,28 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
 
     final usedParams = <String>{};
     for (final m in methods) {
-      final param = m['paramType'] as String;
-      final innerParam = names.getInnerType(param);
-      if (innerParam != 'void' &&
-          !['String', 'int', 'bool', 'double'].contains(innerParam)) {
-        usedParams.add(innerParam);
+      final isPaginated = m['isPaginated'] as bool? ?? false;
+
+      if (!isPaginated) {
+        final param = m['paramType'] as String;
+        final innerParam = names.getInnerType(param);
+
+        String mappedInnerParam = innerParam;
+        if (innerParam.endsWith('BaseRequest')) {
+          mappedInnerParam =
+              '${innerParam.substring(0, innerParam.length - 11)}Params';
+        } else if (innerParam.endsWith('Request')) {
+          mappedInnerParam =
+              '${innerParam.substring(0, innerParam.length - 7)}Params';
+        } else if (innerParam.endsWith('Model')) {
+          mappedInnerParam =
+              '${innerParam.substring(0, innerParam.length - 5)}Params';
+        }
+
+        if (mappedInnerParam != 'void' &&
+            !['String', 'int', 'bool', 'double'].contains(mappedInnerParam)) {
+          usedParams.add(mappedInnerParam);
+        }
       }
     }
 
@@ -78,7 +95,23 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
       final returnType = m['returnType'] as String;
       final innerReturn = names.getInnerType(returnType);
       final paramType = m['paramType'] as String;
+      final innerParam = names.getInnerType(paramType);
       final isPaginated = m['isPaginated'] as bool? ?? false;
+
+      String mappedInnerParam = innerParam;
+      if (innerParam.endsWith('BaseRequest')) {
+        mappedInnerParam =
+            '${innerParam.substring(0, innerParam.length - 11)}Params';
+      } else if (innerParam.endsWith('Request')) {
+        mappedInnerParam =
+            '${innerParam.substring(0, innerParam.length - 7)}Params';
+      } else if (innerParam.endsWith('Model')) {
+        mappedInnerParam =
+            '${innerParam.substring(0, innerParam.length - 5)}Params';
+      }
+
+      String mappedParamType =
+          paramType.replaceFirst(innerParam, mappedInnerParam);
 
       String ret = returnType == 'void' ? 'void' : returnType;
       if (isPaginated && innerReturn.endsWith('Entity')) {
@@ -97,9 +130,9 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
       }
 
       if (isPaginated) {
-        paramParts.add('BaseListRequestModel params');
-      } else if (paramType != 'void') {
-        paramParts.add('$paramType params');
+        paramParts.add('BasePaginationRequest params');
+      } else if (mappedParamType != 'void') {
+        paramParts.add('$mappedParamType params');
       }
 
       params = paramParts.join(', ');

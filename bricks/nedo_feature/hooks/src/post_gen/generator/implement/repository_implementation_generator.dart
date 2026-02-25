@@ -39,7 +39,7 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
     );
     // Base Models Import updated
     content.writeln(
-        "import '../../../../core/network/models/base_list_request_model.dart';");
+        "import '../../../../core/services/network_service/models/request/base_pagination_request.dart';");
     content.writeln(
         "import '../../../../core/services/network_service/models/response/base_pagination_response.dart';");
 
@@ -61,6 +61,42 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
         usedMappers
             .add('${toSnakeCaseWithAcronyms(modelName, acronyms)}_mapper');
       }
+
+      final isPaginated = m['isPaginated'] as bool? ?? false;
+
+      if (!isPaginated) {
+        final paramType = m['paramType'] as String;
+        final innerParam = names.getInnerType(paramType);
+
+        String mappedInnerParam = innerParam;
+        if (innerParam.endsWith('BaseRequest')) {
+          mappedInnerParam =
+              '${innerParam.substring(0, innerParam.length - 11)}Params';
+        } else if (innerParam.endsWith('Request')) {
+          mappedInnerParam =
+              '${innerParam.substring(0, innerParam.length - 7)}Params';
+        } else if (innerParam.endsWith('Model')) {
+          mappedInnerParam =
+              '${innerParam.substring(0, innerParam.length - 5)}Params';
+        }
+
+        if (mappedInnerParam != 'void' &&
+            !['String', 'int', 'bool', 'double'].contains(mappedInnerParam)) {
+          if (mappedInnerParam.endsWith('Params') ||
+              mappedInnerParam.endsWith('Entity')) {
+            String modelName;
+            if (mappedInnerParam.endsWith('Entity')) {
+              modelName =
+                  '${mappedInnerParam.substring(0, mappedInnerParam.length - 6)}Model';
+            } else {
+              modelName =
+                  '${mappedInnerParam.substring(0, mappedInnerParam.length - 6)}Model';
+            }
+            usedMappers
+                .add('${toSnakeCaseWithAcronyms(modelName, acronyms)}_mapper');
+          }
+        }
+      }
     }
 
     for (final mapper in usedMappers) {
@@ -69,21 +105,39 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
 
     final usedParams = <String>{};
     for (final m in methods) {
-      final param = m['paramType'] as String;
-      final innerParam = names.getInnerType(param);
+      final isPaginated = m['isPaginated'] as bool? ?? false;
 
-      if (innerParam != 'void' &&
-          !['String', 'int', 'bool', 'double'].contains(innerParam)) {
-        usedParams.add(innerParam);
-        if (innerParam.endsWith('Model')) {
-          content.writeln(
-            "import '../models/${toSnakeCaseWithAcronyms(innerParam, acronyms)}.dart';",
-          );
-        } else if (innerParam.endsWith('Entity') ||
-            innerParam.endsWith('Params')) {
-          content.writeln(
-            "import '../../domain/entities/${toSnakeCaseWithAcronyms(innerParam, acronyms)}.dart';",
-          );
+      if (!isPaginated) {
+        final param = m['paramType'] as String;
+        final innerParam = names.getInnerType(param);
+
+        String mappedInnerParam = innerParam;
+        if (innerParam.endsWith('BaseRequest')) {
+          mappedInnerParam =
+              '${innerParam.substring(0, innerParam.length - 11)}Params';
+        } else if (innerParam.endsWith('Request')) {
+          mappedInnerParam =
+              '${innerParam.substring(0, innerParam.length - 7)}Params';
+        } else if (innerParam.endsWith('Model')) {
+          mappedInnerParam =
+              '${innerParam.substring(0, innerParam.length - 5)}Params';
+        }
+
+        if (mappedInnerParam != 'void' &&
+            !['String', 'int', 'bool', 'double'].contains(mappedInnerParam)) {
+          if (!usedParams.contains(mappedInnerParam)) {
+            usedParams.add(mappedInnerParam);
+            if (mappedInnerParam.endsWith('Model')) {
+              content.writeln(
+                "import '../models/${toSnakeCaseWithAcronyms(mappedInnerParam, acronyms)}.dart';",
+              );
+            } else if (mappedInnerParam.endsWith('Entity') ||
+                mappedInnerParam.endsWith('Params')) {
+              content.writeln(
+                "import '../../domain/entities/${toSnakeCaseWithAcronyms(mappedInnerParam, acronyms)}.dart';",
+              );
+            }
+          }
         }
       }
     }
@@ -104,7 +158,23 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
       final returnType = m['returnType'] as String;
       final innerReturn = names.getInnerType(returnType);
       final paramType = m['paramType'] as String;
+      final innerParam = names.getInnerType(paramType);
       final isPaginated = m['isPaginated'] as bool? ?? false;
+
+      String mappedInnerParam = innerParam;
+      if (innerParam.endsWith('BaseRequest')) {
+        mappedInnerParam =
+            '${innerParam.substring(0, innerParam.length - 11)}Params';
+      } else if (innerParam.endsWith('Request')) {
+        mappedInnerParam =
+            '${innerParam.substring(0, innerParam.length - 7)}Params';
+      } else if (innerParam.endsWith('Model')) {
+        mappedInnerParam =
+            '${innerParam.substring(0, innerParam.length - 5)}Params';
+      }
+
+      String mappedParamType =
+          paramType.replaceFirst(innerParam, mappedInnerParam);
 
       String ret = returnType == 'void' ? 'void' : returnType;
       if (isPaginated && innerReturn.endsWith('Entity')) {
@@ -126,11 +196,12 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
       }
 
       if (isPaginated) {
-        paramParts.add('BaseListRequestModel params');
+        paramParts.add('BasePaginationRequest params');
         callParts.add('params');
-      } else if (paramType != 'void') {
-        paramParts.add('$paramType params');
-        if (paramType.endsWith('Entity') || paramType.endsWith('Params')) {
+      } else if (mappedParamType != 'void') {
+        paramParts.add('$mappedParamType params');
+        if (mappedParamType.endsWith('Entity') ||
+            mappedParamType.endsWith('Params')) {
           callParts.add('params.toModel()');
         } else {
           callParts.add('params');

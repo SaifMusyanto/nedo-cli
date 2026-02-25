@@ -37,9 +37,9 @@ class CubitGenerator extends BlocGeneratorBase {
       String? importParams;
       if (hasParams && !isWrapperParam) {
         final innerParam = getInnerType(paramType);
-        if (innerParam == 'BaseListRequestModel') {
+        if (innerParam == 'BasePaginationRequest') {
           importParams =
-              "import '../../../../core/network/models/base_list_request_model.dart';";
+              "import '../../../../../../core/services/network_service/models/request/base_pagination_request.dart';";
         } else if (innerParam != 'void' &&
             !['String', 'int', 'bool', 'double'].contains(innerParam)) {
           importParams =
