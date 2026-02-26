@@ -29,7 +29,6 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
     content.writeln("import 'package:fpdart/fpdart.dart';");
     content.writeln("import 'package:injectable/injectable.dart';");
     content.writeln("import '../../../../core/errors/failures.dart';");
-    // Updated path and name
     content.writeln("import '../../../../core/mixins/repository_mixin.dart';");
     content.writeln(
       "import '../../domain/repositories/${featureSnake}_repository.dart';",
@@ -37,7 +36,6 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
     content.writeln(
       "import '../providers/remote/interfaces/i_remote_${featureSnake}_provider.dart';",
     );
-    // Base Models Import updated
     content.writeln(
         "import '../../../../core/services/network_service/models/request/base_pagination_request.dart';");
     content.writeln(
@@ -55,8 +53,7 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
         if (innerType.endsWith('Entity')) {
           modelName = '${innerType.substring(0, innerType.length - 6)}Model';
         } else {
-          modelName =
-              '${innerType.substring(0, innerType.length - 6)}Model'; // For Params which is also 6 chars
+          modelName = '${innerType.substring(0, innerType.length - 6)}Model';
         }
         usedMappers
             .add('${toSnakeCaseWithAcronyms(modelName, acronyms)}_mapper');
@@ -69,7 +66,9 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
         final innerParam = names.getInnerType(paramType);
 
         String mappedInnerParam = innerParam;
-        if (innerParam.endsWith('BaseRequest')) {
+        if (innerParam == 'BasePaginationRequest') {
+          mappedInnerParam = innerParam;
+        } else if (innerParam.endsWith('BaseRequest')) {
           mappedInnerParam =
               '${innerParam.substring(0, innerParam.length - 11)}Params';
         } else if (innerParam.endsWith('Request')) {
@@ -97,6 +96,46 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
           }
         }
       }
+
+      // Handle queryParamType for mappers
+      final queryParamType = m['queryParamType'] as String? ?? 'void';
+      if (queryParamType != 'void') {
+        final innerQueryParam = names.getInnerType(queryParamType);
+        String mappedInnerQueryParam = innerQueryParam;
+        if (innerQueryParam == 'BasePaginationRequest') {
+          mappedInnerQueryParam = innerQueryParam;
+        } else if (innerQueryParam.endsWith('BaseRequest')) {
+          mappedInnerQueryParam =
+              '${innerQueryParam.substring(0, innerQueryParam.length - 11)}Params';
+        } else if (innerQueryParam.endsWith('Request')) {
+          mappedInnerQueryParam =
+              '${innerQueryParam.substring(0, innerQueryParam.length - 7)}Params';
+        } else if (innerQueryParam.endsWith('Model') ||
+            innerQueryParam.endsWith('QueryParams')) {
+          mappedInnerQueryParam = '${innerQueryParam}Entity';
+        }
+        if (queryParamType.endsWith('QueryParams')) {
+          mappedInnerQueryParam = '${queryParamType}Entity';
+        }
+
+        if (mappedInnerQueryParam != 'void' &&
+            !['String', 'int', 'bool', 'double']
+                .contains(mappedInnerQueryParam)) {
+          if (mappedInnerQueryParam.endsWith('Entity') ||
+              mappedInnerQueryParam.endsWith('Params')) {
+            String modelName;
+            if (mappedInnerQueryParam.endsWith('Entity')) {
+              modelName =
+                  '${mappedInnerQueryParam.substring(0, mappedInnerQueryParam.length - 6)}Model';
+            } else {
+              modelName =
+                  '${mappedInnerQueryParam.substring(0, mappedInnerQueryParam.length - 6)}Model';
+            }
+            usedMappers
+                .add('${toSnakeCaseWithAcronyms(modelName, acronyms)}_mapper');
+          }
+        }
+      }
     }
 
     for (final mapper in usedMappers) {
@@ -112,7 +151,9 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
         final innerParam = names.getInnerType(param);
 
         String mappedInnerParam = innerParam;
-        if (innerParam.endsWith('BaseRequest')) {
+        if (innerParam == 'BasePaginationRequest') {
+          mappedInnerParam = innerParam;
+        } else if (innerParam.endsWith('BaseRequest')) {
           mappedInnerParam =
               '${innerParam.substring(0, innerParam.length - 11)}Params';
         } else if (innerParam.endsWith('Request')) {
@@ -140,6 +181,35 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
           }
         }
       }
+
+      final queryParamType = m['queryParamType'] as String? ?? 'void';
+      if (queryParamType != 'void') {
+        final innerQueryParam = names.getInnerType(queryParamType);
+        String mappedInnerQueryParam = innerQueryParam;
+        if (innerQueryParam == 'BasePaginationRequest') {
+          mappedInnerQueryParam = innerQueryParam;
+        } else if (innerQueryParam.endsWith('BaseRequest')) {
+          mappedInnerQueryParam =
+              '${innerQueryParam.substring(0, innerQueryParam.length - 11)}Params';
+        } else if (innerQueryParam.endsWith('Request')) {
+          mappedInnerQueryParam =
+              '${innerQueryParam.substring(0, innerQueryParam.length - 7)}Params';
+        } else if (innerQueryParam.endsWith('Model') ||
+            innerQueryParam.endsWith('QueryParams')) {
+          mappedInnerQueryParam = '${innerQueryParam}Entity';
+        }
+        if (queryParamType.endsWith('QueryParams')) {
+          mappedInnerQueryParam = '${queryParamType}Entity';
+        }
+
+        if (!usedParams.contains(mappedInnerQueryParam)) {
+          usedParams.add(mappedInnerQueryParam);
+          content.writeln(
+            "import '../../domain/entities/${toSnakeCaseWithAcronyms(mappedInnerQueryParam, acronyms)}.dart';",
+          );
+        }
+        // Do NOT add mapper here; already added in first loop
+      }
     }
 
     content.writeln();
@@ -162,7 +232,9 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
       final isPaginated = m['isPaginated'] as bool? ?? false;
 
       String mappedInnerParam = innerParam;
-      if (innerParam.endsWith('BaseRequest')) {
+      if (innerParam == 'BasePaginationRequest') {
+        mappedInnerParam = innerParam;
+      } else if (innerParam.endsWith('BaseRequest')) {
         mappedInnerParam =
             '${innerParam.substring(0, innerParam.length - 11)}Params';
       } else if (innerParam.endsWith('Request')) {
@@ -184,6 +256,27 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
       final pathParams =
           (m['pathParams'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
+      final queryParamType = m['queryParamType'] as String? ?? 'void';
+      final innerQueryParam = names.getInnerType(queryParamType);
+      String mappedInnerQueryParam = innerQueryParam;
+      if (innerQueryParam == 'BasePaginationRequest') {
+        mappedInnerQueryParam = innerQueryParam;
+      } else if (innerQueryParam.endsWith('BaseRequest')) {
+        mappedInnerQueryParam =
+            '${innerQueryParam.substring(0, innerQueryParam.length - 11)}Params';
+      } else if (innerQueryParam.endsWith('Request')) {
+        mappedInnerQueryParam =
+            '${innerQueryParam.substring(0, innerQueryParam.length - 7)}Params';
+      } else if (innerQueryParam.endsWith('Model') ||
+          innerQueryParam.endsWith('QueryParams')) {
+        mappedInnerQueryParam = '${innerQueryParam}Entity';
+      }
+      if (queryParamType.endsWith('QueryParams')) {
+        mappedInnerQueryParam = '${queryParamType}Entity';
+      }
+      String mappedQueryParamType =
+          queryParamType.replaceFirst(innerQueryParam, mappedInnerQueryParam);
+
       String params = '';
       String callParams = '';
       List<String> paramParts = [];
@@ -193,6 +286,16 @@ class RepositoryImplementationGenerator extends FeatureGenerator {
         final pType = p['type'];
         paramParts.add('$pType $pName');
         callParts.add(pName);
+      }
+
+      if (mappedQueryParamType != 'void') {
+        paramParts.add('$mappedQueryParamType queryParams');
+        if (mappedQueryParamType.endsWith('Entity') ||
+            mappedQueryParamType.endsWith('Params')) {
+          callParts.add('queryParams.toModel()');
+        } else {
+          callParts.add('queryParams');
+        }
       }
 
       if (isPaginated) {

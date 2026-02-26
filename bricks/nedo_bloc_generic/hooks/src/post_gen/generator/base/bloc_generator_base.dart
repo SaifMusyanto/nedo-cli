@@ -40,9 +40,21 @@ abstract class BlocGeneratorBase {
     final innerParam = getInnerType(paramType);
 
     String mappedInnerParam = innerParam;
+    if (innerParam == 'BasePaginationRequest') {
+      return innerParam;
+    }
+
     if (innerParam.endsWith('BaseRequest')) {
       mappedInnerParam =
           '${innerParam.substring(0, innerParam.length - 11)}Params';
+    } else if (innerParam.endsWith('Request')) {
+      mappedInnerParam =
+          '${innerParam.substring(0, innerParam.length - 7)}Params';
+    } else if (innerParam.endsWith('Model')) {
+      mappedInnerParam =
+          '${innerParam.substring(0, innerParam.length - 5)}Params';
+    } else if (innerParam.endsWith('QueryParams')) {
+      mappedInnerParam = '${innerParam}Entity';
     }
 
     return mappedInnerParam;

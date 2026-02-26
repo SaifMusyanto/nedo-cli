@@ -28,19 +28,20 @@ class BlocClassGenerator extends BlocGeneratorBase {
       buffer.writeln(import);
     }
     for (final handler in handlers) {
-      final paramType = handler['paramType'];
       final hasParams = handler['hasParams'] as bool;
       final isWrapperParam = handler['isWrapperParam'] as bool? ?? false;
+      final resolvedParamType =
+          handler['resolvedParamType'] as String? ?? 'void';
+
       String? importParams;
       if (hasParams && !isWrapperParam) {
-        final innerParam = getInnerType(paramType);
-        if (innerParam == 'BasePaginationRequest') {
+        if (resolvedParamType == 'BasePaginationRequest') {
           importParams =
               "import '../../../../../../core/services/network_service/models/request/base_pagination_request.dart';";
-        } else if (innerParam != 'void' &&
-            !['String', 'int', 'bool', 'double'].contains(innerParam)) {
-          String mappedParamType = (paramType as String)
-              .replaceFirst(getInnerType(paramType), nameProvider(paramType));
+        } else if (resolvedParamType != 'void' &&
+            !['String', 'int', 'bool', 'double'].contains(resolvedParamType)) {
+          String mappedParamType = resolvedParamType.replaceFirst(
+              getInnerType(resolvedParamType), nameProvider(resolvedParamType));
           importParams =
               "import '../../domain/entities/${toSnakeCaseWithAcronyms(mappedParamType, acronyms)}.dart';";
         }
@@ -101,7 +102,6 @@ class BlocClassGenerator extends BlocGeneratorBase {
       final successState = h['stateSuccess'];
       final hasParams = h['hasParams'] as bool;
       final isVoid = h['isVoidReturn'] as bool;
-      final isWrapperParam = h['isWrapperParam'] as bool? ?? false;
 
       buffer.writeln(
           "  Future<void> $handlerName($eventName event, Emitter<${pascalName}State> emit) async {");
@@ -110,8 +110,7 @@ class BlocClassGenerator extends BlocGeneratorBase {
         buffer.writeln("    emit(${h['pascalName']}Loading());");
       }
 
-      final callParams =
-          (hasParams || isWrapperParam) ? 'event.params' : 'NoParams()';
+      final callParams = hasParams ? 'event.params' : 'NoParams()';
       buffer.writeln("    final result = await $useCaseVar($callParams);");
 
       // Fpdart Fold Logic

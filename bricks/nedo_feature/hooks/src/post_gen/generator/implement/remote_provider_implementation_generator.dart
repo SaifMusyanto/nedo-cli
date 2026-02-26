@@ -64,7 +64,9 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
         final innerParam = names.getInnerType(paramType);
 
         String mappedInnerParam = innerParam;
-        if (innerParam.endsWith('BaseRequest')) {
+        if (innerParam == 'BasePaginationRequest') {
+          mappedInnerParam = innerParam;
+        } else if (innerParam.endsWith('BaseRequest')) {
           mappedInnerParam =
               '${innerParam.substring(0, innerParam.length - 11)}Model';
         } else if (innerParam.endsWith('Request')) {
@@ -83,10 +85,46 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
           usedModels.add(mappedInnerParam);
         }
       }
+
+      final queryParamType = m['queryParamType'] as String? ?? 'void';
+      if (queryParamType != 'void') {
+        final innerQueryParam = names.getInnerType(queryParamType);
+        String mappedInnerQueryParam = innerQueryParam;
+        if (innerQueryParam == 'BasePaginationRequest') {
+          mappedInnerQueryParam = innerQueryParam;
+        } else if (innerQueryParam.endsWith('BaseRequest')) {
+          mappedInnerQueryParam =
+              '${innerQueryParam.substring(0, innerQueryParam.length - 11)}Model';
+        } else if (innerQueryParam.endsWith('Request')) {
+          mappedInnerQueryParam =
+              '${innerQueryParam.substring(0, innerQueryParam.length - 7)}Model';
+        } else if (innerQueryParam.endsWith('Params')) {
+          mappedInnerQueryParam =
+              '${innerQueryParam.substring(0, innerQueryParam.length - 6)}Model';
+        } else if (innerQueryParam.endsWith('Entity') ||
+            innerQueryParam.endsWith('QueryParams')) {
+          mappedInnerQueryParam = '${innerQueryParam}Model';
+        }
+        if (queryParamType.endsWith('QueryParams')) {
+          mappedInnerQueryParam = '${queryParamType}Model';
+        }
+        if (!['String', 'int', 'bool', 'double']
+            .contains(mappedInnerQueryParam)) {
+          usedModels.add(mappedInnerQueryParam);
+        }
+      }
     }
 
     for (final model in usedModels) {
-      if (!['void', 'String', 'int', 'bool', 'double'].contains(model)) {
+      if (![
+        'void',
+        'String',
+        'int',
+        'bool',
+        'double',
+        'BasePaginationRequest',
+        'BasePaginationResponse'
+      ].contains(model)) {
         content.writeln(
           "import '../../../models/${toSnakeCaseWithAcronyms(model, acronyms)}.dart';",
         );
@@ -114,7 +152,9 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
       final isPaginated = m['isPaginated'] as bool? ?? false;
 
       String mappedInnerParam = innerParam;
-      if (innerParam.endsWith('BaseRequest')) {
+      if (innerParam == 'BasePaginationRequest') {
+        mappedInnerParam = innerParam;
+      } else if (innerParam.endsWith('BaseRequest')) {
         mappedInnerParam =
             '${innerParam.substring(0, innerParam.length - 11)}Model';
       } else if (innerParam.endsWith('Request')) {
@@ -130,6 +170,30 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
 
       String mappedParamType =
           paramType.replaceFirst(innerParam, mappedInnerParam);
+
+      final queryParamType = m['queryParamType'] as String? ?? 'void';
+      final innerQueryParam = names.getInnerType(queryParamType);
+      String mappedInnerQueryParam = innerQueryParam;
+      if (innerQueryParam == 'BasePaginationRequest') {
+        mappedInnerQueryParam = innerQueryParam;
+      } else if (innerQueryParam.endsWith('BaseRequest')) {
+        mappedInnerQueryParam =
+            '${innerQueryParam.substring(0, innerQueryParam.length - 11)}Model';
+      } else if (innerQueryParam.endsWith('Request')) {
+        mappedInnerQueryParam =
+            '${innerQueryParam.substring(0, innerQueryParam.length - 7)}Model';
+      } else if (innerQueryParam.endsWith('Params')) {
+        mappedInnerQueryParam =
+            '${innerQueryParam.substring(0, innerQueryParam.length - 6)}Model';
+      } else if (innerQueryParam.endsWith('Entity') ||
+          innerQueryParam.endsWith('QueryParams')) {
+        mappedInnerQueryParam = '${innerQueryParam}Model';
+      }
+      if (queryParamType.endsWith('QueryParams')) {
+        mappedInnerQueryParam = '${queryParamType}Model';
+      }
+      String mappedQueryParamType =
+          queryParamType.replaceFirst(innerQueryParam, mappedInnerQueryParam);
 
       String baseType = innerReturn;
       if (innerReturn.endsWith('Entity')) {
@@ -153,6 +217,10 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
         final pName = p['name'];
         final pType = p['type'];
         paramParts.add('$pType $pName');
+      }
+
+      if (mappedQueryParamType != 'void') {
+        paramParts.add('$mappedQueryParamType queryParams');
       }
 
       if (isPaginated) {
@@ -184,12 +252,14 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
       }
 
       final httpMethod = m['httpMethod'] as String? ?? 'get';
-      final hasQueryParams = m['hasQueryParams'] as bool? ?? false;
 
       if (isPaginated) {
         content.writeln('    return handlePagination<$baseType>(');
         content.writeln('      dioClient,');
         content.writeln('      endpoint: endpoint,');
+        if (mappedQueryParamType != 'void') {
+          content.writeln('      queryParameters: queryParams.toMap(),');
+        }
         content.writeln('      requestBody: params.toMap(),');
         content.writeln('      itemMapper: (json) => $baseType.fromMap(json),');
         content.writeln('    );');
@@ -197,8 +267,8 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
         content.writeln('    return handleGetList(');
         content.writeln('      dioClient,');
         content.writeln('      endpoint: endpoint,');
-        if (hasQueryParams && mappedParamType != 'void') {
-          content.writeln('      queryParameters: params.toMap(),');
+        if (mappedQueryParamType != 'void') {
+          content.writeln('      queryParameters: queryParams.toMap(),');
         }
         if (['String', 'int', 'bool', 'double'].contains(baseType)) {
           content.writeln('      itemMapper: (json) => json as $baseType,');
@@ -219,11 +289,10 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
           content.writeln('      endpoint: endpoint,');
 
           if (mappedParamType != 'void') {
-            if (hasQueryParams) {
-              content.writeln('      queryParameters: params.toMap(),');
-            } else {
-              content.writeln('      body: {"data": params.toMap()},');
-            }
+            content.writeln('      body: {"data": params.toMap()},');
+          }
+          if (mappedQueryParamType != 'void') {
+            content.writeln('      queryParameters: queryParams.toMap(),');
           }
 
           if (baseType != 'void') {
@@ -241,11 +310,10 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
           content.writeln('      endpoint: endpoint,');
 
           if (mappedParamType != 'void') {
-            if (hasQueryParams) {
-              content.writeln('      queryParameters: params.toMap(),');
-            } else {
-              content.writeln('      body: {"data": params.toMap()},');
-            }
+            content.writeln('      body: {"data": params.toMap()},');
+          }
+          if (mappedQueryParamType != 'void') {
+            content.writeln('      queryParameters: queryParams.toMap(),');
           }
 
           if (baseType != 'void') {
@@ -263,8 +331,8 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
           content.writeln('      dioClient,');
           content.writeln('      endpoint: endpoint,');
 
-          if (hasQueryParams && mappedParamType != 'void') {
-            content.writeln('      queryParameters: params.toMap(),');
+          if (mappedQueryParamType != 'void') {
+            content.writeln('      queryParameters: queryParams.toMap(),');
           }
 
           if (baseType != 'void') {

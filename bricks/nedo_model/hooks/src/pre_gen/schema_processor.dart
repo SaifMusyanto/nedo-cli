@@ -90,7 +90,14 @@ class SchemaProcessor {
         return;
       }
 
-      final models = _processDependencies(targetInput, schemas, acronyms);
+      final generatedByEndpoints =
+          context.vars['generated_by_endpoints'] == true;
+      final models = _processDependencies(
+        targetInput,
+        schemas,
+        acronyms,
+        generatedByEndpoints,
+      );
       context.vars['models'] = models;
       _logger.success(
           'Successfully parsed ${models.length} models using iterative logic.');
@@ -109,6 +116,7 @@ class SchemaProcessor {
     List<String> targets,
     Map<String, dynamic> schemas,
     List<String> acronyms,
+    bool generatedByEndpoints,
   ) {
     final models = <Map<String, dynamic>>[];
     final processed = <String>{};
@@ -127,6 +135,11 @@ class SchemaProcessor {
         return [];
       }
     } else {
+      if (generatedByEndpoints) {
+        _logger.info(
+            'No target components identified from endpoints. Skipping model generation.');
+        return [];
+      }
       queue.addAll(schemas.keys);
     }
 

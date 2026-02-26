@@ -135,6 +135,7 @@ mixin CustomDioMixin {
     DioClient dioClient, {
     required String endpoint,
     required Object body,
+    Map<String, dynamic>? queryParameters,
     T Function(Map<String, dynamic> json)? mapper,
     bool getRawResponse = false,
     Options? options,
@@ -142,6 +143,7 @@ mixin CustomDioMixin {
     final Response<dynamic> response = await dioClient.post(
       endpoint,
       data: body,
+      queryParameters: queryParameters,
       options: options,
     );
 

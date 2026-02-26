@@ -47,7 +47,9 @@ class RemoteProviderInterfaceGenerator extends FeatureGenerator {
         final innerParam = names.getInnerType(paramType);
 
         String mappedInnerParam = innerParam;
-        if (innerParam.endsWith('BaseRequest')) {
+        if (innerParam == 'BasePaginationRequest') {
+          mappedInnerParam = innerParam;
+        } else if (innerParam.endsWith('BaseRequest')) {
           mappedInnerParam =
               '${innerParam.substring(0, innerParam.length - 11)}Model';
         } else if (innerParam.endsWith('Request')) {
@@ -66,10 +68,46 @@ class RemoteProviderInterfaceGenerator extends FeatureGenerator {
           usedModels.add(mappedInnerParam);
         }
       }
+
+      final queryParamType = m['queryParamType'] as String? ?? 'void';
+      if (queryParamType != 'void') {
+        final innerQueryParam = names.getInnerType(queryParamType);
+        String mappedInnerQueryParam = innerQueryParam;
+        if (innerQueryParam == 'BasePaginationRequest') {
+          mappedInnerQueryParam = innerQueryParam;
+        } else if (innerQueryParam.endsWith('BaseRequest')) {
+          mappedInnerQueryParam =
+              '${innerQueryParam.substring(0, innerQueryParam.length - 11)}Model';
+        } else if (innerQueryParam.endsWith('Request')) {
+          mappedInnerQueryParam =
+              '${innerQueryParam.substring(0, innerQueryParam.length - 7)}Model';
+        } else if (innerQueryParam.endsWith('Params')) {
+          mappedInnerQueryParam =
+              '${innerQueryParam.substring(0, innerQueryParam.length - 6)}Model';
+        } else if (innerQueryParam.endsWith('Entity') ||
+            innerQueryParam.endsWith('QueryParams')) {
+          mappedInnerQueryParam = '${innerQueryParam}Model';
+        }
+        if (queryParamType.endsWith('QueryParams')) {
+          mappedInnerQueryParam = '${queryParamType}Model';
+        }
+        if (!['String', 'int', 'bool', 'double']
+            .contains(mappedInnerQueryParam)) {
+          usedModels.add(mappedInnerQueryParam);
+        }
+      }
     }
 
     for (final model in usedModels) {
-      if (!['void', 'String', 'int', 'bool', 'double'].contains(model)) {
+      if (![
+        'void',
+        'String',
+        'int',
+        'bool',
+        'double',
+        'BasePaginationRequest',
+        'BasePaginationResponse'
+      ].contains(model)) {
         content.writeln(
           "import '../../../models/${toSnakeCaseWithAcronyms(model, acronyms)}.dart';",
         );
@@ -88,7 +126,9 @@ class RemoteProviderInterfaceGenerator extends FeatureGenerator {
       final innerParam = names.getInnerType(paramType);
 
       String mappedInnerParam = innerParam;
-      if (innerParam.endsWith('BaseRequest')) {
+      if (innerParam == 'BasePaginationRequest') {
+        mappedInnerParam = innerParam;
+      } else if (innerParam.endsWith('BaseRequest')) {
         mappedInnerParam =
             '${innerParam.substring(0, innerParam.length - 11)}Model';
       } else if (innerParam.endsWith('Request')) {
@@ -104,6 +144,30 @@ class RemoteProviderInterfaceGenerator extends FeatureGenerator {
 
       String mappedParamType =
           paramType.replaceFirst(innerParam, mappedInnerParam);
+
+      final queryParamType = m['queryParamType'] as String? ?? 'void';
+      final innerQueryParam = names.getInnerType(queryParamType);
+      String mappedInnerQueryParam = innerQueryParam;
+      if (innerQueryParam == 'BasePaginationRequest') {
+        mappedInnerQueryParam = innerQueryParam;
+      } else if (innerQueryParam.endsWith('BaseRequest')) {
+        mappedInnerQueryParam =
+            '${innerQueryParam.substring(0, innerQueryParam.length - 11)}Model';
+      } else if (innerQueryParam.endsWith('Request')) {
+        mappedInnerQueryParam =
+            '${innerQueryParam.substring(0, innerQueryParam.length - 7)}Model';
+      } else if (innerQueryParam.endsWith('Params')) {
+        mappedInnerQueryParam =
+            '${innerQueryParam.substring(0, innerQueryParam.length - 6)}Model';
+      } else if (innerQueryParam.endsWith('Entity') ||
+          innerQueryParam.endsWith('QueryParams')) {
+        mappedInnerQueryParam = '${innerQueryParam}Model';
+      }
+      if (queryParamType.endsWith('QueryParams')) {
+        mappedInnerQueryParam = '${queryParamType}Model';
+      }
+      String mappedQueryParamType =
+          queryParamType.replaceFirst(innerQueryParam, mappedInnerQueryParam);
 
       String baseType = innerReturn;
       if (innerReturn.endsWith('Entity')) {
@@ -126,6 +190,10 @@ class RemoteProviderInterfaceGenerator extends FeatureGenerator {
         final pName = p['name'];
         final pType = p['type'];
         paramParts.add('$pType $pName');
+      }
+
+      if (mappedQueryParamType != 'void') {
+        paramParts.add('$mappedQueryParamType queryParams');
       }
 
       if (isPaginated) {

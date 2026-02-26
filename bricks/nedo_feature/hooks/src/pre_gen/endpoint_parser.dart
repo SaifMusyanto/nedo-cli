@@ -171,10 +171,15 @@ class EndpointParser {
           paramType = reqRefName;
           targetComponents.add(reqRefName);
         }
-      } else if (queryParams.isNotEmpty) {
+      } else {
+        paramType = 'void';
+      }
+
+      String queryParamType = 'void';
+      if (queryParams.isNotEmpty) {
         // Create additional component for query params
         final reqName = '${methodName.pascalCase}QueryParams';
-        paramType = reqName;
+        queryParamType = reqName;
         final fields = <Map<String, dynamic>>[];
 
         for (var p in queryParams) {
@@ -190,14 +195,13 @@ class EndpointParser {
           'fields': fields,
         });
         targetComponents.add(reqName);
-      } else {
-        paramType = 'void';
       }
 
       parsedMethods.add({
         'name': methodName,
         'returnType': returnType,
         'paramType': paramType,
+        'queryParamType': queryParamType,
         'pathParams': pathParams,
         'urlConstName': urlConstName,
         'isPaginated': isPaginated,

@@ -90,6 +90,7 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
     final rawName = method['name'] as String;
     final returnType = method['returnType'] as String;
     final paramType = method['paramType'] as String;
+    final queryParamType = method['queryParamType'] as String? ?? 'void';
     final pascalName = rawName.pascalCase;
     final camelName = rawName.camelCase;
     final isPaginated = method['isPaginated'] as bool? ?? false;
@@ -98,9 +99,26 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
         (method['pathParams'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     bool needsWrapper = false;
     String wrapperName = '${rawName.pascalCase}Params';
+    int extraParams =
+        (paramType != 'void' ? 1 : 0) + (queryParamType != 'void' ? 1 : 0);
     if (pathParams.isNotEmpty &&
-        (paramType != 'void' || isPaginated || pathParams.length > 1)) {
+        (extraParams > 0 || isPaginated || pathParams.length > 1)) {
       needsWrapper = true;
+    } else if (extraParams > 1 || (isPaginated && queryParamType != 'void')) {
+      needsWrapper = true;
+    }
+
+    String resolvedParamType = 'void';
+    if (!needsWrapper) {
+      if (isPaginated) {
+        resolvedParamType = 'BasePaginationRequest';
+      } else if (extraParams == 0 && pathParams.length == 1) {
+        resolvedParamType = pathParams.first['type'];
+      } else if (extraParams == 1 && pathParams.isEmpty) {
+        resolvedParamType = paramType != 'void' ? paramType : queryParamType;
+      }
+    } else {
+      resolvedParamType = wrapperName;
     }
 
     imports.add(
@@ -113,6 +131,16 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
       if (innerParam.endsWith('Entity')) {
         imports.add(
             "import '../../domain/entities/${toSnakeCaseWithAcronyms(innerParam, acronyms)}.dart';");
+      }
+    }
+
+    if (queryParamType != 'void' && !needsWrapper) {
+      final innerQueryParam = nameProvider.getInnerType(queryParamType);
+      if (innerQueryParam.endsWith('Params') ||
+          innerQueryParam.endsWith('Entity') ||
+          innerQueryParam.endsWith('QueryParams')) {
+        imports.add(
+            "import '../../domain/entities/${toSnakeCaseWithAcronyms(innerQueryParam.endsWith('QueryParams') ? '${innerQueryParam}Entity' : innerQueryParam, acronyms)}.dart';");
       }
     }
     final innerReturn = nameProvider.getInnerType(returnType);
@@ -149,17 +177,6 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
     final mappedReturnType2 =
         isPaginated ? 'BasePaginationResponse<$innerReturn2>' : returnType;
 
-    String mappedParamType = 'NoParams';
-    if (needsWrapper) {
-      mappedParamType = wrapperName;
-    } else if (pathParams.isNotEmpty) {
-      mappedParamType = pathParams.first['type'];
-    } else if (isPaginated) {
-      mappedParamType = 'BasePaginationRequest';
-    } else if (paramType != 'void') {
-      mappedParamType = paramType;
-    }
-
     handlers.add({
       'name': rawName,
       'pascalName': pascalName,
@@ -168,8 +185,10 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
       'stateFailure': '${featureName.pascalCase}Error',
       'useCaseName': '${pascalName}UseCase',
       'useCaseVar': '_${camelName}UseCase',
-      'hasParams': mappedParamType != 'void' && mappedParamType != 'NoParams',
-      'paramType': mappedParamType,
+      'hasParams': needsWrapper || resolvedParamType != 'void',
+      'paramType': paramType,
+      'queryParamType': queryParamType,
+      'resolvedParamType': resolvedParamType,
       'isWrapperParam': needsWrapper,
       'isVoidReturn': returnType == 'void',
       'returnType': mappedReturnType2,

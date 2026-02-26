@@ -31,18 +31,20 @@ class CubitGenerator extends BlocGeneratorBase {
     }
 
     for (final handler in handlers) {
-      final paramType = handler['paramType'];
       final hasParams = handler['hasParams'] as bool;
       final isWrapperParam = handler['isWrapperParam'] as bool? ?? false;
+      final resolvedParamType =
+          handler['resolvedParamType'] as String? ?? 'void';
+
       String? importParams;
       if (hasParams && !isWrapperParam) {
-        if (paramType == 'BasePaginationRequest') {
+        if (resolvedParamType == 'BasePaginationRequest') {
           importParams =
               "import '../../../../../../core/services/network_service/models/request/base_pagination_request.dart';";
-        } else if (paramType != 'void' &&
-            !['String', 'int', 'bool', 'double'].contains(paramType)) {
-          String mappedParamType = (paramType as String)
-              .replaceFirst(getInnerType(paramType), nameProvider(paramType));
+        } else if (resolvedParamType != 'void' &&
+            !['String', 'int', 'bool', 'double'].contains(resolvedParamType)) {
+          String mappedParamType = resolvedParamType.replaceFirst(
+              getInnerType(resolvedParamType), nameProvider(resolvedParamType));
           importParams =
               "import '../../domain/entities/${toSnakeCaseWithAcronyms(mappedParamType, acronyms)}.dart';";
         }
@@ -82,26 +84,25 @@ class CubitGenerator extends BlocGeneratorBase {
     for (final h in handlers) {
       final methodName = h['name']; // camelCase
       final useCaseVar = h['useCaseVar'];
-      final paramType = h['paramType'];
-
-      String mappedParamType = (paramType as String)
-          .replaceFirst(getInnerType(paramType), nameProvider(paramType));
       final hasParams = h['hasParams'] as bool;
       final isVoid = h['isVoidReturn'] as bool;
       final isWrapperParam = h['isWrapperParam'] as bool? ?? false;
+      final resolvedParamType = h['resolvedParamType'] as String? ?? 'void';
 
-      if (isWrapperParam) {
-        mappedParamType = '${h['pascalName']}Params';
+      String mappedParamType = resolvedParamType;
+      if (mappedParamType != 'void' &&
+          !['String', 'int', 'bool', 'double'].contains(mappedParamType) &&
+          !isWrapperParam) {
+        mappedParamType = mappedParamType.replaceFirst(
+            getInnerType(mappedParamType), nameProvider(mappedParamType));
       }
 
-      final methodParams =
-          (hasParams || isWrapperParam) ? '$mappedParamType params' : '';
+      final methodParams = hasParams ? '$mappedParamType params' : '';
 
       buffer.writeln("  Future<void> $methodName($methodParams) async {");
       buffer.writeln("    emit(state.copyWith(status: ScreenStatus.loading));");
 
-      final callParams =
-          (hasParams || isWrapperParam) ? 'params' : 'NoParams()';
+      final callParams = hasParams ? 'params' : 'NoParams()';
       buffer.writeln("    final result = await $useCaseVar($callParams);");
 
       buffer.writeln("    result.fold(");

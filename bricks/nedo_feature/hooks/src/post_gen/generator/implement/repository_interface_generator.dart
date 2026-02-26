@@ -53,7 +53,9 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
         final innerParam = names.getInnerType(param);
 
         String mappedInnerParam = innerParam;
-        if (innerParam.endsWith('BaseRequest')) {
+        if (innerParam == 'BasePaginationRequest') {
+          mappedInnerParam = innerParam;
+        } else if (innerParam.endsWith('BaseRequest')) {
           mappedInnerParam =
               '${innerParam.substring(0, innerParam.length - 11)}Params';
         } else if (innerParam.endsWith('Request')) {
@@ -68,6 +70,28 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
             !['String', 'int', 'bool', 'double'].contains(mappedInnerParam)) {
           usedParams.add(mappedInnerParam);
         }
+      }
+
+      final queryParamType = m['queryParamType'] as String? ?? 'void';
+      if (queryParamType != 'void') {
+        final innerQueryParam = names.getInnerType(queryParamType);
+        String mappedInnerQueryParam = innerQueryParam;
+        if (innerQueryParam == 'BasePaginationRequest') {
+          mappedInnerQueryParam = innerQueryParam;
+        } else if (innerQueryParam.endsWith('BaseRequest')) {
+          mappedInnerQueryParam =
+              '${innerQueryParam.substring(0, innerQueryParam.length - 11)}Params';
+        } else if (innerQueryParam.endsWith('Request')) {
+          mappedInnerQueryParam =
+              '${innerQueryParam.substring(0, innerQueryParam.length - 7)}Params';
+        } else if (innerQueryParam.endsWith('Model') ||
+            innerQueryParam.endsWith('QueryParams')) {
+          mappedInnerQueryParam = '${innerQueryParam}Entity';
+        }
+        if (queryParamType.endsWith('QueryParams')) {
+          mappedInnerQueryParam = '${queryParamType}Entity';
+        }
+        usedParams.add(mappedInnerQueryParam);
       }
     }
 
@@ -99,7 +123,9 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
       final isPaginated = m['isPaginated'] as bool? ?? false;
 
       String mappedInnerParam = innerParam;
-      if (innerParam.endsWith('BaseRequest')) {
+      if (innerParam == 'BasePaginationRequest') {
+        mappedInnerParam = innerParam;
+      } else if (innerParam.endsWith('BaseRequest')) {
         mappedInnerParam =
             '${innerParam.substring(0, innerParam.length - 11)}Params';
       } else if (innerParam.endsWith('Request')) {
@@ -112,6 +138,27 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
 
       String mappedParamType =
           paramType.replaceFirst(innerParam, mappedInnerParam);
+
+      final queryParamType = m['queryParamType'] as String? ?? 'void';
+      final innerQueryParam = names.getInnerType(queryParamType);
+      String mappedInnerQueryParam = innerQueryParam;
+      if (innerQueryParam == 'BasePaginationRequest') {
+        mappedInnerQueryParam = innerQueryParam;
+      } else if (innerQueryParam.endsWith('BaseRequest')) {
+        mappedInnerQueryParam =
+            '${innerQueryParam.substring(0, innerQueryParam.length - 11)}Params';
+      } else if (innerQueryParam.endsWith('Request')) {
+        mappedInnerQueryParam =
+            '${innerQueryParam.substring(0, innerQueryParam.length - 7)}Params';
+      } else if (innerQueryParam.endsWith('Model') ||
+          innerQueryParam.endsWith('QueryParams')) {
+        mappedInnerQueryParam = '${innerQueryParam}Entity';
+      }
+      if (queryParamType.endsWith('QueryParams')) {
+        mappedInnerQueryParam = '${queryParamType}Entity';
+      }
+      String mappedQueryParamType =
+          queryParamType.replaceFirst(innerQueryParam, mappedInnerQueryParam);
 
       String ret = returnType == 'void' ? 'void' : returnType;
       if (isPaginated && innerReturn.endsWith('Entity')) {
@@ -127,6 +174,10 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
         final pName = p['name'];
         final pType = p['type'];
         paramParts.add('$pType $pName');
+      }
+
+      if (mappedQueryParamType != 'void') {
+        paramParts.add('$mappedQueryParamType queryParams');
       }
 
       if (isPaginated) {

@@ -159,11 +159,32 @@ class BlocPreGenProcessor {
 
       final pathParams = method['pathParams'] as List? ?? [];
       final isPaginated = method['isPaginated'] as bool? ?? false;
+      final queryParamType = method['queryParamType'] as String? ?? 'void';
+
       bool isWrapperParam = false;
+      int extraParams =
+          (paramType != 'void' ? 1 : 0) + (queryParamType != 'void' ? 1 : 0);
       if (pathParams.isNotEmpty &&
-          (paramType != 'void' || isPaginated || pathParams.length > 1)) {
+          (extraParams > 0 || isPaginated || pathParams.length > 1)) {
+        isWrapperParam = true;
+      } else if (extraParams > 1 || (isPaginated && queryParamType != 'void')) {
         isWrapperParam = true;
       }
+
+      String resolvedParamType = 'void';
+      if (!isWrapperParam) {
+        if (isPaginated) {
+          resolvedParamType = 'BasePaginationRequest';
+        } else if (extraParams == 0 && pathParams.length == 1) {
+          resolvedParamType = pathParams.first['type'] as String;
+        } else if (extraParams == 1 && pathParams.isEmpty) {
+          resolvedParamType = paramType != 'void' ? paramType : queryParamType;
+        }
+      } else {
+        resolvedParamType = '${pascalName}Params';
+      }
+
+      bool hasParams = isWrapperParam || resolvedParamType != 'void';
 
       if (paramType != 'void' &&
           !isWrapperParam &&
@@ -176,6 +197,16 @@ class BlocPreGenProcessor {
             innerParam.endsWith('Entity')) {
           imports.add(
               "import '../../domain/entities/${toSnakeCaseWithAcronyms(innerParam, acronyms)}.dart';");
+        }
+      }
+
+      if (queryParamType != 'void' && !isWrapperParam) {
+        final innerQueryParam = _getInnerType(queryParamType);
+        if (innerQueryParam.endsWith('Params') ||
+            innerQueryParam.endsWith('Entity') ||
+            innerQueryParam.endsWith('QueryParams')) {
+          imports.add(
+              "import '../../domain/entities/${toSnakeCaseWithAcronyms(innerQueryParam.endsWith('QueryParams') ? '${innerQueryParam}Entity' : innerQueryParam, acronyms)}.dart';");
         }
       }
       if (returnType != 'void' &&
@@ -207,8 +238,10 @@ class BlocPreGenProcessor {
         'stateFailure': '${featureName.pascalCase}Error',
         'useCaseName': useCaseName,
         'useCaseVar': useCaseVar,
-        'hasParams': paramType != 'void',
+        'hasParams': hasParams,
+        'resolvedParamType': resolvedParamType,
         'paramType': paramType,
+        'queryParamType': queryParamType,
         'isVoidReturn': returnType == 'void',
         'returnType': returnType,
         'transformer': transformerFunction,

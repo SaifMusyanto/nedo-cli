@@ -12,8 +12,10 @@ class NameProvider {
 
   String getModelName(String original) =>
       _originalToModel[original] ?? original;
-  String getEntityName(String original) =>
-      _originalToEntity[original] ?? original;
+  String getEntityName(String original) {
+    if (original == 'BasePaginationRequest') return original;
+    return _originalToEntity[original] ?? original;
+  }
 
   String getInnerType(String type) {
     if (type.startsWith('List<') && type.endsWith('>')) {
