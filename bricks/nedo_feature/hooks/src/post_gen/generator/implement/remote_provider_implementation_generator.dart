@@ -183,6 +183,9 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
         content.writeln('    // TODO: Implement $methodName');
       }
 
+      final httpMethod = m['httpMethod'] as String? ?? 'get';
+      final hasQueryParams = m['hasQueryParams'] as bool? ?? false;
+
       if (isPaginated) {
         content.writeln('    return handlePagination<$baseType>(');
         content.writeln('      dioClient,');
@@ -194,27 +197,83 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
         content.writeln('    return handleGetList(');
         content.writeln('      dioClient,');
         content.writeln('      endpoint: endpoint,');
-        content.writeln('      itemMapper: (json) => $baseType.fromMap(json),');
+        if (hasQueryParams && mappedParamType != 'void') {
+          content.writeln('      queryParameters: params.toMap(),');
+        }
+        if (['String', 'int', 'bool', 'double'].contains(baseType)) {
+          content.writeln('      itemMapper: (json) => json as $baseType,');
+        } else {
+          content
+              .writeln('      itemMapper: (json) => $baseType.fromMap(json),');
+        }
         content.writeln('    );');
       } else {
-        if (mappedParamType != 'void' &&
-            (mappedParamType.endsWith('Model') ||
-                mappedParamType.endsWith('Request') ||
-                mappedParamType.endsWith('Params'))) {
-          content.writeln('    return handlePost(');
+        if (httpMethod == 'post' ||
+            httpMethod == 'put' ||
+            httpMethod == 'patch') {
+          String handleCall = httpMethod == 'put'
+              ? 'handlePut'
+              : (httpMethod == 'patch' ? 'handlePatch' : 'handlePost');
+          content.writeln('    return $handleCall(');
           content.writeln('      dioClient,');
           content.writeln('      endpoint: endpoint,');
-          content.writeln('      body: {"data": params.toMap()},');
+
+          if (mappedParamType != 'void') {
+            if (hasQueryParams) {
+              content.writeln('      queryParameters: params.toMap(),');
+            } else {
+              content.writeln('      body: {"data": params.toMap()},');
+            }
+          }
+
           if (baseType != 'void') {
-            content.writeln('      mapper: (json) => $baseType.fromMap(json),');
+            if (['String', 'int', 'bool', 'double'].contains(baseType)) {
+              content.writeln('      mapper: (json) => json as $baseType,');
+            } else {
+              content
+                  .writeln('      mapper: (json) => $baseType.fromMap(json),');
+            }
+          }
+          content.writeln('    );');
+        } else if (httpMethod == 'delete') {
+          content.writeln('    return handleDelete(');
+          content.writeln('      dioClient,');
+          content.writeln('      endpoint: endpoint,');
+
+          if (mappedParamType != 'void') {
+            if (hasQueryParams) {
+              content.writeln('      queryParameters: params.toMap(),');
+            } else {
+              content.writeln('      body: {"data": params.toMap()},');
+            }
+          }
+
+          if (baseType != 'void') {
+            if (['String', 'int', 'bool', 'double'].contains(baseType)) {
+              content.writeln('      mapper: (json) => json as $baseType,');
+            } else {
+              content
+                  .writeln('      mapper: (json) => $baseType.fromMap(json),');
+            }
           }
           content.writeln('    );');
         } else {
+          // get method
           content.writeln('    return handleGet(');
           content.writeln('      dioClient,');
           content.writeln('      endpoint: endpoint,');
+
+          if (hasQueryParams && mappedParamType != 'void') {
+            content.writeln('      queryParameters: params.toMap(),');
+          }
+
           if (baseType != 'void') {
-            content.writeln('      mapper: (json) => $baseType.fromMap(json),');
+            if (['String', 'int', 'bool', 'double'].contains(baseType)) {
+              content.writeln('      mapper: (json) => json as $baseType,');
+            } else {
+              content
+                  .writeln('      mapper: (json) => $baseType.fromMap(json),');
+            }
           }
           content.writeln('    );');
         }

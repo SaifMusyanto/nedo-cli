@@ -148,11 +148,18 @@ class EndpointParser {
 
       final parameters = (operation['parameters'] as List?) ?? [];
       final pathParams = <Map<String, dynamic>>[];
+      final queryParams = <Map<String, dynamic>>[];
       for (var p in parameters) {
         if (p['in'] == 'path') {
           pathParams.add({
             'name': p['name'],
             'type': _mapOpenApiToDartType(p['schema']?['type'] ?? 'string'),
+          });
+        } else if (p['in'] == 'query') {
+          queryParams.add({
+            'name': p['name'],
+            'type': _mapOpenApiToDartType(p['schema']?['type'] ?? 'string'),
+            'required': p['required'] == true,
           });
         }
       }
@@ -164,34 +171,27 @@ class EndpointParser {
           paramType = reqRefName;
           targetComponents.add(reqRefName);
         }
-      } else if (parameters.isNotEmpty) {
-        if (parameters.length == 1) {
-          final pType = parameters[0]['schema']?['type'] ?? 'string';
-          paramType = _mapOpenApiToDartType(pType);
-        } else {
-          // Create additional component
-          final reqName = '${methodName.pascalCase}Request';
-          paramType = reqName;
-          final fields = <Map<String, dynamic>>[];
+      } else if (queryParams.isNotEmpty) {
+        // Create additional component for query params
+        final reqName = '${methodName.pascalCase}Params';
+        paramType = reqName;
+        final fields = <Map<String, dynamic>>[];
 
-          for (var p in parameters) {
-            final pName = p['name'] ?? '';
-            final required = p['required'] == true;
-            final type = p['schema']?['type'] ?? 'string';
-
-            fields.add({
-              'name': pName,
-              'type': _mapOpenApiToDartType(type),
-              'nullable': !required,
-            });
-          }
-
-          additionalComponents.add({
-            'name': reqName,
-            'fields': fields,
+        for (var p in queryParams) {
+          fields.add({
+            'name': p['name'],
+            'type': p['type'],
+            'nullable': !p['required'],
           });
-          targetComponents.add(reqName);
         }
+
+        additionalComponents.add({
+          'name': reqName,
+          'fields': fields,
+        });
+        targetComponents.add(reqName);
+      } else {
+        paramType = 'void';
       }
 
       parsedMethods.add({
@@ -202,6 +202,8 @@ class EndpointParser {
         'urlConstName': urlConstName,
         'isPaginated': isPaginated,
         'isFuture': true,
+        'httpMethod': httpMethod,
+        'hasQueryParams': queryParams.isNotEmpty,
       });
 
       logger.success(

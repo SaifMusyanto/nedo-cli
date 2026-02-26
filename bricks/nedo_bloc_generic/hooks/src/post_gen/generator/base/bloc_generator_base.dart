@@ -35,4 +35,16 @@ abstract class BlocGeneratorBase {
     }
     return type;
   }
+
+  String nameProvider(String paramType) {
+    final innerParam = getInnerType(paramType);
+
+    String mappedInnerParam = innerParam;
+    if (innerParam.endsWith('BaseRequest')) {
+      mappedInnerParam =
+          '${innerParam.substring(0, innerParam.length - 11)}Params';
+    }
+
+    return mappedInnerParam;
+  }
 }

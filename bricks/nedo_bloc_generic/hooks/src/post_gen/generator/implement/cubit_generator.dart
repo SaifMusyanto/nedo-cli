@@ -36,14 +36,15 @@ class CubitGenerator extends BlocGeneratorBase {
       final isWrapperParam = handler['isWrapperParam'] as bool? ?? false;
       String? importParams;
       if (hasParams && !isWrapperParam) {
-        final innerParam = getInnerType(paramType);
-        if (innerParam == 'BasePaginationRequest') {
+        if (paramType == 'BasePaginationRequest') {
           importParams =
               "import '../../../../../../core/services/network_service/models/request/base_pagination_request.dart';";
-        } else if (innerParam != 'void' &&
-            !['String', 'int', 'bool', 'double'].contains(innerParam)) {
+        } else if (paramType != 'void' &&
+            !['String', 'int', 'bool', 'double'].contains(paramType)) {
+          String mappedParamType = (paramType as String)
+              .replaceFirst(getInnerType(paramType), nameProvider(paramType));
           importParams =
-              "import '../../domain/entities/${toSnakeCaseWithAcronyms(innerParam, acronyms)}.dart';";
+              "import '../../domain/entities/${toSnakeCaseWithAcronyms(mappedParamType, acronyms)}.dart';";
         }
       } else if (!hasParams) {
         // path fix
@@ -82,10 +83,13 @@ class CubitGenerator extends BlocGeneratorBase {
       final methodName = h['name']; // camelCase
       final useCaseVar = h['useCaseVar'];
       final paramType = h['paramType'];
+
+      String mappedParamType = (paramType as String)
+          .replaceFirst(getInnerType(paramType), nameProvider(paramType));
       final hasParams = h['hasParams'] as bool;
       final isVoid = h['isVoidReturn'] as bool;
 
-      final methodParams = hasParams ? '$paramType params' : '';
+      final methodParams = hasParams ? '$mappedParamType params' : '';
 
       buffer.writeln("  Future<void> $methodName($methodParams) async {");
       buffer.writeln("    emit(state.copyWith(status: ScreenStatus.loading));");

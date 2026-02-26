@@ -39,8 +39,10 @@ class BlocClassGenerator extends BlocGeneratorBase {
               "import '../../../../../../core/services/network_service/models/request/base_pagination_request.dart';";
         } else if (innerParam != 'void' &&
             !['String', 'int', 'bool', 'double'].contains(innerParam)) {
+          String mappedParamType = (paramType as String)
+              .replaceFirst(getInnerType(paramType), nameProvider(paramType));
           importParams =
-              "import '../../domain/entities/${toSnakeCaseWithAcronyms(innerParam, acronyms)}.dart';";
+              "import '../../domain/entities/${toSnakeCaseWithAcronyms(mappedParamType, acronyms)}.dart';";
         }
       } else if (!hasParams) {
         // path fix
