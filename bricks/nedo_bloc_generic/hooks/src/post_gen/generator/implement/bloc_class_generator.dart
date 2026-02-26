@@ -101,6 +101,7 @@ class BlocClassGenerator extends BlocGeneratorBase {
       final successState = h['stateSuccess'];
       final hasParams = h['hasParams'] as bool;
       final isVoid = h['isVoidReturn'] as bool;
+      final isWrapperParam = h['isWrapperParam'] as bool? ?? false;
 
       buffer.writeln(
           "  Future<void> $handlerName($eventName event, Emitter<${pascalName}State> emit) async {");
@@ -109,7 +110,8 @@ class BlocClassGenerator extends BlocGeneratorBase {
         buffer.writeln("    emit(${h['pascalName']}Loading());");
       }
 
-      final callParams = hasParams ? 'event.params' : 'NoParams()';
+      final callParams =
+          (hasParams || isWrapperParam) ? 'event.params' : 'NoParams()';
       buffer.writeln("    final result = await $useCaseVar($callParams);");
 
       // Fpdart Fold Logic

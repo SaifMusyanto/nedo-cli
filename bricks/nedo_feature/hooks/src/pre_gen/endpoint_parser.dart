@@ -173,7 +173,7 @@ class EndpointParser {
         }
       } else if (queryParams.isNotEmpty) {
         // Create additional component for query params
-        final reqName = '${methodName.pascalCase}Params';
+        final reqName = '${methodName.pascalCase}QueryParams';
         paramType = reqName;
         final fields = <Map<String, dynamic>>[];
 

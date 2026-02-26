@@ -30,10 +30,19 @@ class EventGenerator extends BlocGeneratorBase {
       final eventName = h['eventName'] as String;
       final paramType = h['paramType'] as String;
       final hasParams = h['hasParams'] as bool;
+      final isWrapperParam = h['isWrapperParam'] as bool? ?? false;
+
+      String mappedParamType = paramType;
+      if (isWrapperParam) {
+        mappedParamType = '${h['pascalName']}Params';
+      } else if (hasParams) {
+        mappedParamType = paramType.replaceFirst(
+            getInnerType(paramType), nameProvider(paramType));
+      }
 
       buffer.writeln("class $eventName extends ${pascalName}Event {");
-      if (hasParams) {
-        buffer.writeln("  final $paramType params;");
+      if (hasParams || isWrapperParam) {
+        buffer.writeln("  final $mappedParamType params;");
         buffer.writeln();
         buffer.writeln("  const $eventName(this.params);");
         buffer.writeln();

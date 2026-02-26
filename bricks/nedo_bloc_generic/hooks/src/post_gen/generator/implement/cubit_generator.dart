@@ -88,13 +88,20 @@ class CubitGenerator extends BlocGeneratorBase {
           .replaceFirst(getInnerType(paramType), nameProvider(paramType));
       final hasParams = h['hasParams'] as bool;
       final isVoid = h['isVoidReturn'] as bool;
+      final isWrapperParam = h['isWrapperParam'] as bool? ?? false;
 
-      final methodParams = hasParams ? '$mappedParamType params' : '';
+      if (isWrapperParam) {
+        mappedParamType = '${h['pascalName']}Params';
+      }
+
+      final methodParams =
+          (hasParams || isWrapperParam) ? '$mappedParamType params' : '';
 
       buffer.writeln("  Future<void> $methodName($methodParams) async {");
       buffer.writeln("    emit(state.copyWith(status: ScreenStatus.loading));");
 
-      final callParams = hasParams ? 'params' : 'NoParams()';
+      final callParams =
+          (hasParams || isWrapperParam) ? 'params' : 'NoParams()';
       buffer.writeln("    final result = await $useCaseVar($callParams);");
 
       buffer.writeln("    result.fold(");

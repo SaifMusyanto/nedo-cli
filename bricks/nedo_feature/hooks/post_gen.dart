@@ -94,10 +94,21 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
     final camelName = rawName.camelCase;
     final isPaginated = method['isPaginated'] as bool? ?? false;
 
+    final pathParams =
+        (method['pathParams'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    bool needsWrapper = false;
+    String wrapperName = '${rawName.pascalCase}Params';
+    if (pathParams.isNotEmpty &&
+        (paramType != 'void' || isPaginated || pathParams.length > 1)) {
+      needsWrapper = true;
+    }
+
     imports.add(
         "import '../../domain/usecases/${toSnakeCaseWithAcronyms(rawName, acronyms)}_usecase.dart';");
 
-    if (paramType != 'void' && !['String', 'int', 'bool'].contains(paramType)) {
+    if (paramType != 'void' &&
+        !['String', 'int', 'bool'].contains(paramType) &&
+        !needsWrapper) {
       final innerParam = nameProvider.getInnerType(paramType);
       if (innerParam.endsWith('Entity')) {
         imports.add(
@@ -132,15 +143,6 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
         imports.add(
             "import '../../../../core/services/network_service/models/response/base_pagination_response.dart';");
       }
-    }
-
-    final pathParams =
-        (method['pathParams'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    bool needsWrapper = false;
-    String wrapperName = '${rawName.pascalCase}Params';
-    if (pathParams.isNotEmpty &&
-        (paramType != 'void' || isPaginated || pathParams.length > 1)) {
-      needsWrapper = true;
     }
 
     final innerReturn2 = nameProvider.getInnerType(returnType);

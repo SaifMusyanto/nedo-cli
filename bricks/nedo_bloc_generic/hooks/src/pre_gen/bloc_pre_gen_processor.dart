@@ -8,57 +8,75 @@ class BlocPreGenProcessor {
 
   Future<void> process(HookContext context) async {
     if (!context.vars.containsKey('feature_name')) {
-      context.vars['feature_name'] = logger.prompt(
-        'What is the feature name? (e.g. Auth, Order)',
-      );
+      if (context.vars.containsKey('name')) {
+        context.vars['feature_name'] = context.vars['name'];
+      } else {
+        context.vars['feature_name'] = logger.prompt(
+          'What is the feature name? (e.g. Auth, Order)',
+        );
+      }
     }
     final featureName = context.vars['feature_name'] as String;
     final acronyms = (context.vars['acronyms'] as List?)?.cast<String>() ?? [];
 
     if (!context.vars.containsKey('type')) {
-      context.vars['type'] = logger.chooseOne(
-        'Select state management type:',
-        choices: ['bloc', 'cubit'],
-        defaultValue: 'bloc',
-      );
+      if (context.vars.containsKey('stateManagement')) {
+        final stateMgmt =
+            context.vars['stateManagement'] as Map<String, dynamic>;
+        context.vars['type'] = stateMgmt['type'];
+        if (stateMgmt.containsKey('properties')) {
+          context.vars['state_props'] = stateMgmt['properties'];
+        }
+      } else {
+        context.vars['type'] = logger.chooseOne(
+          'Select state management type:',
+          choices: ['bloc', 'cubit'],
+          defaultValue: 'bloc',
+        );
+      }
     }
     final isBloc = (context.vars['type'] as String).toLowerCase() == 'bloc';
 
+    final hasStateMgmt = context.vars.containsKey('stateManagement');
+
     if (!isBloc) {
       final props = <Map<String, dynamic>>[];
-      logger.info('\n--- Define State Properties ---');
+      if (!hasStateMgmt) {
+        logger.info('\n--- Define State Properties ---');
 
-      if (logger.confirm('Add a "status" field (enum)?', defaultValue: true)) {
-        props.add({
-          'name': 'status',
-          'type': 'ScreenStatus',
-        });
-      }
-
-      bool addingProps = true;
-      while (addingProps) {
-        if (!logger.confirm('Add a property to the state?',
+        if (logger.confirm('Add a "status" field (enum)?',
             defaultValue: true)) {
-          addingProps = false;
-          break;
+          props.add({
+            'name': 'status',
+            'type': 'ScreenStatus',
+          });
         }
 
-        final propName = logger.prompt('Property name (e.g. user, items):');
-        final propType =
-            logger.prompt('Property type (e.g. User?, List<Item>):');
-        final propDefault = logger.prompt(
-          'Default value (optional, e.g. "User.empty()", "[]"):',
-        );
+        bool addingProps = true;
+        while (addingProps) {
+          if (!logger.confirm('Add a property to the state?',
+              defaultValue: true)) {
+            addingProps = false;
+            break;
+          }
 
-        props.add({
-          'name': propName,
-          'type': propType,
-          'default': propDefault.isEmpty ? null : propDefault,
-        });
+          final propName = logger.prompt('Property name (e.g. user, items):');
+          final propType =
+              logger.prompt('Property type (e.g. User?, List<Item>):');
+          final propDefault = logger.prompt(
+            'Default value (optional, e.g. "User.empty()", "[]"):',
+          );
+
+          props.add({
+            'name': propName,
+            'type': propType,
+            'default': propDefault.isEmpty ? null : propDefault,
+          });
+        }
+        context.vars['state_props'] = props;
       }
-      context.vars['state_props'] = props;
     } else {
-      if (!context.vars.containsKey('main_data_type')) {
+      if (!context.vars.containsKey('main_data_type') && !hasStateMgmt) {
         if (logger.confirm('Define a main data type for Success state?',
             defaultValue: false)) {
           context.vars['main_data_type'] =
@@ -77,10 +95,12 @@ class BlocPreGenProcessor {
     final methods = context.vars['methods'] as List<dynamic>;
 
     final dependencies = <String, dynamic>{
-      'hasSecureStorage': logger.confirm(
-        'Does this Bloc need SecureStorageService?',
-        defaultValue: false,
-      ),
+      'hasSecureStorage': hasStateMgmt
+          ? false
+          : logger.confirm(
+              'Does this Bloc need SecureStorageService?',
+              defaultValue: false,
+            ),
       'hasStreamSubscription': false,
     };
 
@@ -98,16 +118,19 @@ class BlocPreGenProcessor {
       String? transformerFunction;
 
       if (isBloc) {
-        final concurrency = logger.chooseOne(
-          'Concurrency mode for "$rawName"? (default: concurrent)',
-          choices: [
-            'concurrent (default)',
-            'droppable',
-            'restartable',
-            'sequential'
-          ],
-          defaultValue: 'concurrent (default)',
-        );
+        String concurrency = 'concurrent (default)';
+        if (!hasStateMgmt) {
+          concurrency = logger.chooseOne(
+            'Concurrency mode for "$rawName"? (default: concurrent)',
+            choices: [
+              'concurrent (default)',
+              'droppable',
+              'restartable',
+              'sequential'
+            ],
+            defaultValue: 'concurrent (default)',
+          );
+        }
 
         if (concurrency != 'concurrent (default)') {
           transformerFunction = concurrency;
@@ -116,22 +139,34 @@ class BlocPreGenProcessor {
         }
       }
 
-      final statePattern = logger.chooseOne(
-        'State Pattern for "$rawName"? (default: standard)',
-        choices: [
-          'standard (triad: loading, success, failure)',
-          'optimistic (success, failure)',
-          'simple (success only)',
-        ],
-        defaultValue: 'standard (triad: loading, success, failure)',
-      );
+      String statePattern = 'standard (triad: loading, success, failure)';
+      if (!hasStateMgmt) {
+        statePattern = logger.chooseOne(
+          'State Pattern for "$rawName"? (default: standard)',
+          choices: [
+            'standard (triad: loading, success, failure)',
+            'optimistic (success, failure)',
+            'simple (success only)',
+          ],
+          defaultValue: 'standard (triad: loading, success, failure)',
+        );
+      }
       final useCaseName = '${pascalName}UseCase';
       final useCaseVar = '_${camelName}UseCase';
 
       imports.add(
           "import '../../domain/usecases/${toSnakeCaseWithAcronyms(rawName, acronyms)}_usecase.dart';");
 
+      final pathParams = method['pathParams'] as List? ?? [];
+      final isPaginated = method['isPaginated'] as bool? ?? false;
+      bool isWrapperParam = false;
+      if (pathParams.isNotEmpty &&
+          (paramType != 'void' || isPaginated || pathParams.length > 1)) {
+        isWrapperParam = true;
+      }
+
       if (paramType != 'void' &&
+          !isWrapperParam &&
           !['String', 'int', 'bool'].contains(paramType)) {
         final innerParam = _getInnerType(paramType);
         if (innerParam == 'BasePaginationRequest') {
@@ -178,6 +213,7 @@ class BlocPreGenProcessor {
         'returnType': returnType,
         'transformer': transformerFunction,
         'statePattern': statePattern.split(' ').first,
+        'isWrapperParam': isWrapperParam,
       });
     }
 
