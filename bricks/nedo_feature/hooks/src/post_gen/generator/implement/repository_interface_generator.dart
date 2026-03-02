@@ -31,7 +31,13 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
 
     final usedEntities = <String>{};
     for (final m in methods) {
-      final returnType = m['returnType'] as String;
+      String returnType = m['returnType'] as String;
+      if (returnType == 'GuidObjectBaseResponse' || returnType == 'Guid') {
+        returnType = 'String';
+      } else if (returnType == 'List<GuidObjectBaseResponse>' ||
+          returnType == 'List<Guid>') {
+        returnType = 'List<String>';
+      }
       final innerType = names.getInnerType(returnType);
       if (innerType.endsWith('Entity') && innerType != 'void') {
         usedEntities.add(innerType);
@@ -116,7 +122,13 @@ class RepositoryInterfaceGenerator extends FeatureGenerator {
     content.writeln('abstract class $className {');
     for (final m in methods) {
       final methodName = m['name'] as String;
-      final returnType = m['returnType'] as String;
+      String returnType = m['returnType'] as String;
+      if (returnType == 'GuidObjectBaseResponse' || returnType == 'Guid') {
+        returnType = 'String';
+      } else if (returnType == 'List<GuidObjectBaseResponse>' ||
+          returnType == 'List<Guid>') {
+        returnType = 'List<String>';
+      }
       final innerReturn = names.getInnerType(returnType);
       final paramType = m['paramType'] as String;
       final innerParam = names.getInnerType(paramType);

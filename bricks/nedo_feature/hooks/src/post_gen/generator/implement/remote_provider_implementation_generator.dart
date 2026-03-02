@@ -46,7 +46,13 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
     final usedModels = <String>{};
 
     for (final m in methods) {
-      final returnType = m['returnType'] as String;
+      String returnType = m['returnType'] as String;
+      if (returnType == 'GuidObjectBaseResponse' || returnType == 'Guid') {
+        returnType = 'String';
+      } else if (returnType == 'List<GuidObjectBaseResponse>' ||
+          returnType == 'List<Guid>') {
+        returnType = 'List<String>';
+      }
       final innerReturn = names.getInnerType(returnType);
 
       if (innerReturn.endsWith('Entity')) {
@@ -145,7 +151,13 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
 
     for (final m in methods) {
       final methodName = m['name'] as String;
-      final returnType = m['returnType'] as String;
+      String returnType = m['returnType'] as String;
+      if (returnType == 'GuidObjectBaseResponse' || returnType == 'Guid') {
+        returnType = 'String';
+      } else if (returnType == 'List<GuidObjectBaseResponse>' ||
+          returnType == 'List<Guid>') {
+        returnType = 'List<String>';
+      }
       final innerReturn = names.getInnerType(returnType);
       final paramType = m['paramType'] as String;
       final innerParam = names.getInnerType(paramType);
@@ -260,7 +272,7 @@ class RemoteProviderImplementationGenerator extends FeatureGenerator {
         if (mappedQueryParamType != 'void') {
           content.writeln('      queryParameters: queryParams.toMap(),');
         }
-        content.writeln('      requestBody: params.toMap(),');
+        content.writeln('      requestBody: {"data": params.toMap()},');
         content.writeln('      itemMapper: (json) => $baseType.fromMap(json),');
         content.writeln('    );');
       } else if (returnType.startsWith('List<')) {

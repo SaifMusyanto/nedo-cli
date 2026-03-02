@@ -88,7 +88,13 @@ Future<void> _generateBloc(HookContext context, List<String> acronyms) async {
 
   for (final method in methods) {
     final rawName = method['name'] as String;
-    final returnType = method['returnType'] as String;
+    String returnType = method['returnType'] as String;
+    if (returnType == 'GuidObjectBaseResponse' || returnType == 'Guid') {
+      returnType = 'String';
+    } else if (returnType == 'List<GuidObjectBaseResponse>' ||
+        returnType == 'List<Guid>') {
+      returnType = 'List<String>';
+    }
     final paramType = method['paramType'] as String;
     final queryParamType = method['queryParamType'] as String? ?? 'void';
     final pascalName = rawName.pascalCase;
@@ -225,7 +231,7 @@ Future<void> _injectEndpoints(HookContext context, String featureName) async {
         if (ep is Map) {
           final name = ep['name'];
           final url = ep['url'];
-          buffer.writeln("  static const String $name = '$url';");
+          buffer.writeln("  static const String $name = '/$url';");
         }
       }
 

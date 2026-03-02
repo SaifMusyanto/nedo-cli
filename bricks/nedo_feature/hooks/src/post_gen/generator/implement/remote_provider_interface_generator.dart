@@ -29,7 +29,13 @@ class RemoteProviderInterfaceGenerator extends FeatureGenerator {
 
     final usedModels = <String>{};
     for (final m in methods) {
-      final returnType = m['returnType'] as String;
+      String returnType = m['returnType'] as String;
+      if (returnType == 'GuidObjectBaseResponse' || returnType == 'Guid') {
+        returnType = 'String';
+      } else if (returnType == 'List<GuidObjectBaseResponse>' ||
+          returnType == 'List<Guid>') {
+        returnType = 'List<String>';
+      }
       final innerReturn = names.getInnerType(returnType);
 
       if (innerReturn.endsWith('Entity')) {
@@ -118,7 +124,13 @@ class RemoteProviderInterfaceGenerator extends FeatureGenerator {
     content.writeln('abstract class $interfaceName {');
     for (final m in methods) {
       final methodName = m['name'] as String;
-      final returnType = m['returnType'] as String;
+      String returnType = m['returnType'] as String;
+      if (returnType == 'GuidObjectBaseResponse' || returnType == 'Guid') {
+        returnType = 'String';
+      } else if (returnType == 'List<GuidObjectBaseResponse>' ||
+          returnType == 'List<Guid>') {
+        returnType = 'List<String>';
+      }
       final innerReturn = names.getInnerType(returnType);
       final paramType = m['paramType'] as String;
       final isPaginated = m['isPaginated'] as bool? ?? false;

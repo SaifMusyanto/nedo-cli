@@ -1,11 +1,72 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
-import '../services/network_service/dio_client.dart';
-import '../services/network_service/models/response/base_pagination_response.dart';
+import 'package:moncube_mobile/core/services/network_service/dio_client.dart';
+import 'package:moncube_mobile/core/services/network_service/models/response/base_pagination_response.dart';
 
 final voidType = _getType<void>();
 Type _getType<T>() => T;
 
 mixin CustomDioMixin {
+  Stream<String> handlePostStream(
+    DioClient dioClient, {
+    required String endpoint,
+    required Object body,
+  }) async* {
+    final response = await dioClient.postStream(endpoint, data: body);
+
+    final stream = response.data?.stream;
+    if (stream == null) {
+      throw const FormatException('No response body from SSE stream');
+    }
+
+    final buffer = StringBuffer();
+    String sseBuffer = '';
+
+    await for (final chunk in stream) {
+      sseBuffer += utf8.decode(chunk);
+
+      final events = sseBuffer.split('\n\n');
+      sseBuffer = events.removeLast();
+
+      for (final event in events) {
+        final hadDelta = _parseSseEvent(event, buffer);
+        if (hadDelta) yield buffer.toString();
+      }
+    }
+
+    if (sseBuffer.trim().isNotEmpty) {
+      final hadDelta = _parseSseEvent(sseBuffer, buffer);
+      if (hadDelta) yield buffer.toString();
+    }
+  }
+
+  bool _parseSseEvent(String event, StringBuffer buffer) {
+    bool hadDelta = false;
+    final lines = event.split('\n');
+    for (final line in lines) {
+      if (!line.startsWith('data:')) continue;
+
+      final raw = line.substring(5).trim();
+      if (raw.isEmpty) continue;
+
+      try {
+        final parsed = json.decode(raw) as Map<String, dynamic>;
+        final type = parsed['type'] as String?;
+
+        if (type == 'delta') {
+          final content = parsed['content'] as String? ?? '';
+          buffer.write(content);
+          hadDelta = true;
+        }
+      } catch (_) {
+        // Skip malformed SSE JSON
+      }
+    }
+    return hadDelta;
+  }
+
   Future<List<T>> handleGetList<T>(
     DioClient dioClient, {
     required String endpoint,
@@ -192,17 +253,26 @@ mixin CustomDioMixin {
       return Future<T>.value();
     }
 
-    final Map<String, dynamic>? data = getResponseData(response.data);
+    final dynamic data = getResponseData(response.data);
 
     if (data == null) {
       throw const FormatException('Invalid response format from server');
     }
 
-    if (mapper == null) {
-      throw ArgumentError('Mapper is required when T is not void');
+    if (data is T) {
+      return data;
     }
 
-    return mapper(data);
+    if (data is Map<String, dynamic>) {
+      if (mapper == null) {
+        throw ArgumentError('Mapper is required for type $T');
+      }
+      return mapper(data);
+    }
+
+    throw FormatException(
+      'Unsupported response type: ${data.runtimeType} for expected type $T',
+    );
   }
 
   Future<T> handlePatch<T>(
@@ -222,17 +292,26 @@ mixin CustomDioMixin {
       return Future<T>.value();
     }
 
-    final Map<String, dynamic>? data = getResponseData(response.data);
+    final dynamic data = getResponseData(response.data);
 
     if (data == null) {
       throw const FormatException('Invalid response format from server');
     }
 
-    if (mapper == null) {
-      throw ArgumentError('Mapper is required when T is not void');
+    if (data is T) {
+      return data;
     }
 
-    return mapper(data);
+    if (data is Map<String, dynamic>) {
+      if (mapper == null) {
+        throw ArgumentError('Mapper is required for type $T');
+      }
+      return mapper(data);
+    }
+
+    throw FormatException(
+      'Unsupported response type: ${data.runtimeType} for expected type $T',
+    );
   }
 
   Future<T> handleDelete<T>(
@@ -252,17 +331,26 @@ mixin CustomDioMixin {
       return Future<T>.value();
     }
 
-    final Map<String, dynamic>? data = getResponseData(response.data);
+    final dynamic data = getResponseData(response.data);
 
     if (data == null) {
       throw const FormatException('Invalid response format from server');
     }
 
-    if (mapper == null) {
-      throw ArgumentError('Mapper is required when T is not void');
+    if (data is T) {
+      return data;
     }
 
-    return mapper(data);
+    if (data is Map<String, dynamic>) {
+      if (mapper == null) {
+        throw ArgumentError('Mapper is required for type $T');
+      }
+      return mapper(data);
+    }
+
+    throw FormatException(
+      'Unsupported response type: ${data.runtimeType} for expected type $T',
+    );
   }
 
   dynamic getResponseData(dynamic data) {
